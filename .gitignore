@@ -1,0 +1,20 @@
+# Environment variables
+.env
+
+# Dependencies
+node_modules/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Build files
+/frontend/dist
+/frontend/build
+
+# Editor directories
+.idea
+.vscode
+*.swp
+*.swo

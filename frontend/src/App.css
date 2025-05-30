@@ -1,0 +1,42 @@
+.card {
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.btn-primary {
+  background-color: #007bff;
+}
+
+.navbar {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* Updated status styling */
+.item-status-lost {
+  background-color: #f8d7da;
+  border-left: 4px solid #dc3545;
+}
+
+.item-status-found {
+  background-color: #cfe2ff;
+  border-left: 4px solid #0d6efd;
+}
+
+.item-status-claimed {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+}
+
+.item-status-resolved {
+  background-color: #d1e7dd;
+  border-left: 4px solid #198754;
+}
+
+.form-control:focus {
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
