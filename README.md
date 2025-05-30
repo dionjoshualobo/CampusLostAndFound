@@ -31,8 +31,8 @@ A full-stack web application designed to help university students and faculty re
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/campus-lost-found.git
-cd campus-lost-found
+git clone https://github.com/dionjoshualobo/CampusLostAndFound.git
+cd CampusLostAndFound
 ```
 
 ### 2. Database Setup
@@ -185,6 +185,8 @@ campus-lost-found/
 ### Notifications
 - `GET /api/notifications` - Get user notifications
 - `PUT /api/notifications/:id/read` - Mark notification as read
+
+
 
 ## Usage
 
