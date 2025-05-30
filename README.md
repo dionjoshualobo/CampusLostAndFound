@@ -24,7 +24,7 @@ A full-stack web application designed to help university students and faculty re
 
 - Node.js (v14 or higher)
 - NPM (v6 or higher)
-- MySQL, MariaDB, or compatible database system
+- **MySQL/MariaDB installed locally** - Currently, this application requires a local MySQL or MariaDB installation to function. There are plans to support cloud-based database solutions in future updates.
 
 ## Setup Instructions
 
@@ -203,4 +203,16 @@ campus-lost-found/
 4. **Notifications**:
    - Get notified when someone claims to have found your lost item
    - Receive updates on items you've reported or interacted with
+
+
+## Future Development
+
+The following enhancements are planned for future versions:
+
+- **Cloud Database Support**: Migration from local MySQL to cloud-based database solutions for easier deployment and maintenance
+- Image upload functionality for item identification
+- Admin dashboard for system management
+- Mobile applications for iOS and Android
+- QR code generation for physical item tags
+- Integration with institutional ID systems
 
