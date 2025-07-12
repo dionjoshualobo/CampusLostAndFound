@@ -42,6 +42,26 @@ router.put('/:id/read', auth, async (req, res) => {
   }
 });
 
+// Delete notification
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    // Verify the notification belongs to the user
+    const [rows] = await db.execute('SELECT * FROM notifications WHERE id = ? AND userId = ?', 
+      [req.params.id, req.user.id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+    
+    await db.execute('DELETE FROM notifications WHERE id = ?', [req.params.id]);
+    
+    res.json({ message: 'Notification deleted successfully' });
+  } catch (error) {
+    console.error('Delete notification error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Create a notification (internal function, not exposed as API)
 // This will be called from the items route when claiming
 

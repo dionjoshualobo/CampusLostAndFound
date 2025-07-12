@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { getNotifications, markNotificationAsRead } from '../api';
+import { getNotifications, markNotificationAsRead, deleteNotification } from '../api';
 import { formatDate } from '../utils/dateUtils';
 import ContactInfoModal from './ContactInfoModal';
 
@@ -10,6 +10,7 @@ const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
+  const dropdownRef = useRef(null);
 
   const fetchNotifications = async () => {
     try {
@@ -30,6 +31,23 @@ const NotificationDropdown = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Add click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
   const handleMarkAsRead = async (id) => {
     try {
       await markNotificationAsRead(id);
@@ -40,6 +58,22 @@ const NotificationDropdown = () => {
       ));
     } catch (err) {
       console.error('Error marking notification as read:', err);
+    }
+  };
+
+  const handleDeleteNotification = async (id, event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!window.confirm('Are you sure you want to delete this notification?')) {
+      return;
+    }
+    
+    try {
+      await deleteNotification(id);
+      setNotifications(notifications.filter(notification => notification.id !== id));
+    } catch (err) {
+      console.error('Error deleting notification:', err);
     }
   };
 
@@ -54,7 +88,7 @@ const NotificationDropdown = () => {
 
   return (
     <>
-      <div className="dropdown">
+      <div className="dropdown" ref={dropdownRef}>
         <button
           className="btn btn-link nav-link position-relative"
           onClick={() => setIsOpen(!isOpen)}
@@ -111,6 +145,14 @@ const NotificationDropdown = () => {
                           Mark as read
                         </button>
                       )}
+                      
+                      <button
+                        className="btn btn-sm btn-link text-danger ms-2"
+                        onClick={(e) => handleDeleteNotification(notification.id, e)}
+                        title="Delete notification"
+                      >
+                        <i className="bi bi-trash"></i>
+                      </button>
                     </div>
                   </div>
                 </div>

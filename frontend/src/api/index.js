@@ -63,5 +63,6 @@ export const deleteComment = (id) => api.delete(`/comments/${id}`);
 // Notifications APIs
 export const getNotifications = () => api.get('/notifications');
 export const markNotificationAsRead = (id) => api.put(`/notifications/${id}/read`);
+export const deleteNotification = (id) => api.delete(`/notifications/${id}`);
 
 export default api;
