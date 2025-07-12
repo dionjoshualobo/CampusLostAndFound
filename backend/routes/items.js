@@ -31,28 +31,8 @@ router.get('/stats', async (req, res) => {
       GROUP BY status
     `);
     
-    // Get counts by category
-    const [categoryCounts] = await db.execute(`
-      SELECT c.name, COUNT(i.id) as count 
-      FROM categories c
-      LEFT JOIN items i ON c.id = i.categoryId
-      GROUP BY c.id
-      ORDER BY count DESC
-    `);
-    
-    // Get recent activity
-    const [recentActivity] = await db.execute(`
-      SELECT i.id, i.title, i.status, i.createdAt, u.name as userName
-      FROM items i
-      LEFT JOIN users u ON i.userId = u.id
-      ORDER BY i.createdAt DESC
-      LIMIT 5
-    `);
-    
     res.json({
-      statusCounts,
-      categoryCounts,
-      recentActivity
+      statusCounts
     });
   } catch (error) {
     console.error('Get stats error:', error);
