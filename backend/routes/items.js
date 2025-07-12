@@ -73,7 +73,7 @@ router.post('/', auth, async (req, res) => {
     
     const [result] = await db.execute(
       'INSERT INTO items (title, description, status, location, dateLost, categoryId, userId) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [title, description, status, location, dateLost, categoryId, req.user.id]
+      [title, description || null, status, location, dateLost, categoryId, req.user.id]
     );
     
     const [newItem] = await db.execute(`
