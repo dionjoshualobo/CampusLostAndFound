@@ -15,7 +15,7 @@ A full-stack web application designed to help university students and faculty re
 
 ## Tech Stack
 
-- **Frontend**: React.js, Bootstrap 5, Axios
+- **Frontend**: React.js with Vite, Bootstrap 5, Axios
 - **Backend**: Node.js, Express.js
 - **Database**: MySQL/MariaDB
 - **Authentication**: JWT (JSON Web Tokens)
@@ -130,10 +130,10 @@ The backend will be available at http://localhost:5000
 In a new terminal:
 ```bash
 cd frontend
-npm run dev
+npm start
 ```
 
-The frontend will be available at http://localhost:5173
+The frontend will be available at http://localhost:3000 (or the port shown in your terminal)
 
 ## Project Structure
 

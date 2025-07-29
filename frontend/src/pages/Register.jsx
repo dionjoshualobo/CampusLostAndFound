@@ -10,29 +10,62 @@ const Register = ({ login }) => {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   
   const { name, email, password, confirmPassword } = formData;
   
   const onChange = e => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[e.target.name]) {
+      setValidationErrors({ ...validationErrors, [e.target.name]: '' });
+    }
+  };
+  
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    if (!password) {
+      errors.password = 'Password is required';
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long';
+    }
+    
+    if (!confirmPassword) {
+      errors.confirmPassword = 'Please confirm your password';
+    } else if (password !== confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+    }
+    
+    return errors;
   };
   
   const onSubmit = async e => {
     e.preventDefault();
     
-    if (!name || !email || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
+    // Clear previous errors
+    setError('');
+    setValidationErrors({});
     
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    // Validate form
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
     
     setIsLoading(true);
-    setError('');
     
     try {
       const response = await register({ name, email, password });
@@ -55,55 +88,67 @@ const Register = ({ login }) => {
             
             <form onSubmit={onSubmit}>
               <div className="mb-3">
-                <label htmlFor="name" className="form-label">Name</label>
+                <label htmlFor="name" className="form-label">Name *</label>
                 <input
                   type="text"
-                  className="form-control"
+                  className={`form-control ${validationErrors.name ? 'is-invalid' : ''}`}
                   id="name"
                   name="name"
                   value={name}
                   onChange={onChange}
                   required
                 />
+                {validationErrors.name && (
+                  <div className="invalid-feedback">{validationErrors.name}</div>
+                )}
               </div>
               
               <div className="mb-3">
-                <label htmlFor="email" className="form-label">Email Address</label>
+                <label htmlFor="email" className="form-label">Email Address *</label>
                 <input
                   type="email"
-                  className="form-control"
+                  className={`form-control ${validationErrors.email ? 'is-invalid' : ''}`}
                   id="email"
                   name="email"
                   value={email}
                   onChange={onChange}
                   required
                 />
+                {validationErrors.email && (
+                  <div className="invalid-feedback">{validationErrors.email}</div>
+                )}
               </div>
               
               <div className="mb-3">
-                <label htmlFor="password" className="form-label">Password</label>
+                <label htmlFor="password" className="form-label">Password *</label>
                 <input
                   type="password"
-                  className="form-control"
+                  className={`form-control ${validationErrors.password ? 'is-invalid' : ''}`}
                   id="password"
                   name="password"
                   value={password}
                   onChange={onChange}
                   required
                 />
+                {validationErrors.password && (
+                  <div className="invalid-feedback">{validationErrors.password}</div>
+                )}
               </div>
               
               <div className="mb-3">
-                <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
+                <label htmlFor="confirmPassword" className="form-label">Confirm Password *</label>
                 <input
                   type="password"
-                  className="form-control"
+                  className={`form-control ${validationErrors.confirmPassword ? 'is-invalid' : ''}`}
                   id="confirmPassword"
                   name="confirmPassword"
                   value={confirmPassword}
                   onChange={onChange}
                   required
                 />
+                {validationErrors.confirmPassword && (
+                  <div className="invalid-feedback">{validationErrors.confirmPassword}</div>
+                )}
               </div>
               
               <button 

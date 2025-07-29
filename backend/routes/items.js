@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
+const { validateItemReport } = require('../middleware/validation');
 
 // Get all items with category info
 router.get('/', async (req, res) => {
@@ -62,14 +63,10 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create a new item (protected route)
-router.post('/', auth, async (req, res) => {
+// Create a new item (protected route) with validation
+router.post('/', auth, validateItemReport, async (req, res) => {
   try {
     const { title, description, status, location, dateLost, categoryId } = req.body;
-    
-    if (!title || !status) {
-      return res.status(400).json({ message: 'Title and status are required' });
-    }
     
     const [result] = await db.execute(
       'INSERT INTO items (title, description, status, location, dateLost, categoryId, userId) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -376,5 +373,7 @@ router.delete('/:id', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+
 
 module.exports = router;
