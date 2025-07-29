@@ -14,6 +14,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   
   useEffect(() => {
     // Check if user is authenticated on app load
@@ -24,8 +25,45 @@ function App() {
       const userData = JSON.parse(localStorage.getItem('user') || '{}');
       setUser(userData);
     }
+    
+    // Check for saved dark mode preference
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode) {
+      const isDark = JSON.parse(savedDarkMode);
+      setIsDarkMode(isDark);
+      // Apply theme immediately
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    } else {
+      // Check system preference
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setIsDarkMode(prefersDark);
+      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    }
+    
     setIsLoading(false);
   }, []);
+  
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e) => {
+      // Only auto-switch if user hasn't manually set a preference
+      const savedDarkMode = localStorage.getItem('darkMode');
+      if (!savedDarkMode) {
+        setIsDarkMode(e.matches);
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+  
+  // Apply theme changes
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+  }, [isDarkMode]);
   
   const login = (token, userData) => {
     localStorage.setItem('token', token);
@@ -41,34 +79,53 @@ function App() {
     setUser(null);
   };
   
+  const toggleDarkMode = () => {
+    setIsDarkMode(prevMode => !prevMode);
+  };
+  
   if (isLoading) {
-    return <div className="container mt-5">Loading...</div>;
+    return (
+      <div className="container mt-5 text-center">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="mt-3">Loading Campus Lost & Found...</p>
+      </div>
+    );
   }
   
   return (
     <Router>
-      <Navbar isAuthenticated={isAuthenticated} user={user} logout={logout} />
-      <div className="container mt-4">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route 
-            path="/login" 
-            element={isAuthenticated ? <Navigate to="/" /> : <Login login={login} />} 
-          />
-          <Route 
-            path="/register" 
-            element={isAuthenticated ? <Navigate to="/" /> : <Register login={login} />} 
-          />
-          <Route 
-            path="/items/new" 
-            element={isAuthenticated ? <ItemForm /> : <Navigate to="/login" />} 
-          />
-          <Route path="/items/:id" element={<ItemDetails />} />
-          <Route 
-            path="/profile" 
-            element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} 
-          />
-        </Routes>
+      <div className="App">
+        <Navbar 
+          isAuthenticated={isAuthenticated} 
+          user={user} 
+          logout={logout}
+          isDarkMode={isDarkMode}
+          toggleDarkMode={toggleDarkMode}
+        />
+        <div className="container mt-4">
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route 
+              path="/login" 
+              element={isAuthenticated ? <Navigate to="/" /> : <Login login={login} />} 
+            />
+            <Route 
+              path="/register" 
+              element={isAuthenticated ? <Navigate to="/" /> : <Register login={login} />} 
+            />
+            <Route 
+              path="/items/new" 
+              element={isAuthenticated ? <ItemForm /> : <Navigate to="/login" />} 
+            />
+            <Route path="/items/:id" element={<ItemDetails />} />
+            <Route 
+              path="/profile" 
+              element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} 
+            />
+          </Routes>
+        </div>
       </div>
     </Router>
   );
