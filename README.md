@@ -1,220 +1,187 @@
-# Campus Lost & Found System
+# Campus Lost and Found
 
-A full-stack web application designed to help university students and faculty report, search, and claim lost or found items on campus.
+A web application for managing lost and found items on campus. Students can report lost items, post found items, and connect with each other to recover lost belongings.
 
 ## Features
 
-- User authentication and profile management
-- Report lost or found items with detailed descriptions
-- Search and filter items by category, status, and keywords
-- Comment system for each item
-- Notification system for item claims
-- Dashboard with summary statistics
-- Status tracking (Lost, Found, Claimed, Resolved)
-- Mobile responsive design
+- **User Authentication**: Secure registration and login system
+- **Item Management**: Report lost items or post found items
+- **Category System**: Organize items by categories
+- **Status Tracking**: Track items through different statuses (lost, found, claimed, resolved)
+- **Notifications**: Get notified when someone responds to your items
+- **Dark Mode**: Toggle between light and dark themes
+- **Responsive Design**: Works on desktop and mobile devices
 
 ## Tech Stack
 
-- **Frontend**: React.js with Vite, Bootstrap 5, Axios
-- **Backend**: Node.js, Express.js
-- **Database**: MySQL/MariaDB
-- **Authentication**: JWT (JSON Web Tokens)
+### Backend
+- **Node.js** with Express.js
+- **MySQL** database
+- **JWT** for authentication
+- **bcryptjs** for password hashing
+- **express-validator** for input validation
 
-## Prerequisites
+### Frontend
+- **React.js** with functional components and hooks
+- **Bootstrap 5** for styling
+- **Axios** for API calls
+- **React Router** for navigation
 
+## Project Structure
+
+```
+CampusLostAndFound/
+├── backend/
+│   ├── config/
+│   │   └── db.js              # Database configuration
+│   ├── middleware/
+│   │   ├── auth.js            # Authentication middleware
+│   │   └── validation.js      # Input validation middleware
+│   ├── routes/
+│   │   ├── auth.js           # Authentication routes
+│   │   ├── categories.js     # Category management routes
+│   │   ├── items.js          # Item management routes
+│   │   └── notifications.js  # Notification routes
+│   └── server.js             # Express server setup
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── pages/           # Page components
+│   │   ├── App.js           # Main App component
+│   │   ├── App.css          # Global styles with dark mode
+│   │   └── index.js         # React entry point
+│   └── package.json
+└── README.md
+```
+
+## Installation
+
+### Prerequisites
 - Node.js (v14 or higher)
-- NPM (v6 or higher)
-- **MySQL/MariaDB installed locally** - Currently, this application requires a local MySQL or MariaDB installation to function. There are plans to support cloud-based database solutions in future updates.
+- MySQL (v8.0 or higher)
+- npm or yarn
 
-## Setup Instructions
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/dionjoshualobo/CampusLostAndFound.git
-cd CampusLostAndFound
-```
-
-### 2. Database Setup
-
-This project works with MySQL and MariaDB. You can use any of the following database systems:
-- MySQL (5.7 or higher)
-- MariaDB (10.5 or higher)
-- Amazon Aurora (MySQL compatible)
-- Percona Server for MySQL
-
-#### Database Creation
-
-1. Log in to your MySQL/MariaDB server:
-```bash
-mysql -u root -p
-```
-
-2. Create a new database and user:
-```sql
-CREATE DATABASE lost_and_found;
-CREATE USER 'lostfound_user'@'localhost' IDENTIFIED BY 'your_password';
-GRANT ALL PRIVILEGES ON lost_and_found.* TO 'lostfound_user'@'localhost';
-FLUSH PRIVILEGES;
-EXIT;
-```
-
-### 3. Environment Configuration
+### Backend Setup
 
 1. Navigate to the backend directory:
 ```bash
 cd backend
 ```
 
-2. Create a `.env` file from the example:
+2. Install dependencies:
 ```bash
-cp .env.example .env
+npm install
 ```
 
-3. Edit the `.env` file with your database credentials:
-```properties
+3. Create a MySQL database for the project
+
+4. Configure environment variables by creating a `.env` file:
+```env
 DB_HOST=localhost
-DB_USER=lostfound_user
+DB_USER=your_username
 DB_PASSWORD=your_password
-DB_NAME=lost_and_found
-JWT_SECRET=generate_a_secure_random_string
+DB_NAME=campus_lost_found
+JWT_SECRET=your_jwt_secret_key
 PORT=5000
 ```
 
-To generate a secure JWT secret, you can use the following command:
+5. Set up the database tables (you'll need to create the schema based on the application requirements)
+
+6. Start the backend server:
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-### 4. Backend Setup
-
-1. Install backend dependencies:
-```bash
-cd backend
-npm install
-```
-
-2. Set up the database tables:
-```bash
-cd db-scripts
-node db-setup.js
-```
-
-This script will:
-- Check database connection
-- Create all required tables
-- Set up foreign key relationships
-- Add default categories
-
-### 5. Frontend Setup
-
-1. Install frontend dependencies:
-```bash
-cd frontend
-npm install
-```
-
-## Running the Application
-
-### Start Backend Server
-
-```bash
-cd backend
-npm run dev
-```
-
-The backend will be available at http://localhost:5000
-
-### Start Frontend Development Server
-
-In a new terminal:
-```bash
-cd frontend
 npm start
 ```
 
-The frontend will be available at http://localhost:3000 (or the port shown in your terminal)
+The backend server will run on `http://localhost:5000`
 
-## Project Structure
+### Frontend Setup
 
+1. Navigate to the frontend directory:
+```bash
+cd frontend
 ```
-campus-lost-found/
-├── backend/                # Node.js & Express backend
-│   ├── config/             # Database configuration
-│   ├── db-scripts/         # Database setup and migration scripts
-│   ├── middleware/         # Authentication middleware
-│   ├── routes/             # API routes
-│   └── server.js           # Entry point
-│
-└── frontend/               # React frontend
-    ├── public/             # Static assets
-    └── src/
-        ├── api/            # API calls
-        ├── components/     # Reusable components
-        ├── pages/          # Page components
-        └── utils/          # Utility functions
+
+2. Install dependencies:
+```bash
+npm install
 ```
+
+3. Start the React development server:
+```bash
+npm start
+```
+
+The frontend application will run on `http://localhost:3000`
+
+## Database Schema
+
+The application uses the following main tables:
+
+- **users**: Store user information and authentication data
+- **categories**: Item categories for organization
+- **items**: Lost and found items with status tracking
+- **notifications**: User notifications for item interactions
 
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/register` - Register new user
 - `POST /api/auth/login` - User login
-- `GET /api/auth/user` - Get authenticated user
+- `GET /api/auth/me` - Get current user info
 
 ### Items
-- `GET /api/items` - List all items
-- `GET /api/items/stats` - Get dashboard statistics
-- `GET /api/items/:id` - Get item details
-- `POST /api/items` - Create new item
-- `PUT /api/items/:id` - Update item
-- `PUT /api/items/:id/claim` - Claim/resolve item
-- `DELETE /api/items/:id` - Delete item
+- `GET /api/items` - Get all items
+- `GET /api/items/stats` - Get item statistics
+- `GET /api/items/:id` - Get specific item
+- `POST /api/items` - Create new item (protected)
+- `PUT /api/items/:id` - Update item (protected)
+- `PUT /api/items/:id/claim` - Claim/resolve item (protected)
+- `DELETE /api/items/:id` - Delete item (protected)
 
-### Users
-- `GET /api/users/profile` - Get user profile
-- `PUT /api/users/profile` - Update user profile
-- `PUT /api/users/password` - Change password
-- `GET /api/users/contact/:id` - Get user contact information
-
-### Comments
-- `GET /api/comments/item/:itemId` - Get comments for an item
-- `POST /api/comments` - Add a comment
-- `DELETE /api/comments/:id` - Delete a comment
+### Categories
+- `GET /api/categories` - Get all categories
+- `POST /api/categories` - Create category (protected)
 
 ### Notifications
-- `GET /api/notifications` - Get user notifications
-- `PUT /api/notifications/:id/read` - Mark notification as read
-
-
+- `GET /api/notifications` - Get user notifications (protected)
+- `PUT /api/notifications/:id/read` - Mark notification as read (protected)
 
 ## Usage
 
-1. **Registration and Login**: Users must create an account to report items or interact with the platform.
+1. **Register/Login**: Create an account or login to access the system
+2. **Report Lost Item**: Fill out the form with item details, location, and date lost
+3. **Post Found Item**: Report items you've found with description and location
+4. **Browse Items**: View all lost and found items, filter by category
+5. **Claim Items**: Notify item owners when you've found their lost items
+6. **Resolve Items**: Mark items as resolved when they've been returned
 
-2. **Reporting Items**: 
-   - Select whether the item is lost or found
-   - Provide a descriptive title, category, and location
-   - Add any relevant details that might help in identification
+## Features in Detail
 
-3. **Finding Items**:
-   - Browse through listed items or use the search and filter options
-   - View item details and comment for more information
-   - Claim items that belong to you or that you've found
+### Item Status System
+- **Lost**: Items that users have lost
+- **Found**: Items that users have found
+- **Claimed**: Items that have been claimed by someone
+- **Resolved**: Items that have been successfully returned
 
-4. **Notifications**:
-   - Get notified when someone claims to have found your lost item
-   - Receive updates on items you've reported or interacted with
+### Notification System
+- Users receive notifications when someone responds to their items
+- Real-time updates on item status changes
 
+### Dark Mode
+- Toggle between light and dark themes
+- Persistent theme preference
+- Smooth transitions and animations
 
-## Future Development
+## Contributing
 
-The following enhancements are planned for future versions:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-- **Cloud Database Support**: Migration from local MySQL to cloud-based database solutions for easier deployment and maintenance
-- Image upload functionality for item identification
-- Admin dashboard for system management
-- Mobile applications for iOS and Android
-- QR code generation for physical item tags
-- Integration with institutional ID systems
+## License
+
+This project is open source and available under the MIT License.
 
