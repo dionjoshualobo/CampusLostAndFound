@@ -88,46 +88,50 @@ const NotificationDropdown = () => {
 
   return (
     <>
-      <div className="dropdown" ref={dropdownRef}>
-        <button
-          className="btn btn-link nav-link position-relative"
-          onClick={() => setIsOpen(!isOpen)}
-        >
-          <i className="bi bi-bell"></i>
-          {unreadCount > 0 && (
-            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-              {unreadCount}
-            </span>
-          )}
-        </button>
+      <div className="dropdown dropdown-end" ref={dropdownRef}>
+        <div tabIndex={0} role="button" className="btn btn-ghost btn-circle" onClick={() => setIsOpen(!isOpen)}>
+          <div className="indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-5 5v-5zM7.07 8.07a7 7 0 10-1.41 1.41M13 10.93a4 4 0 00-5.66 0" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="badge badge-sm badge-primary indicator-item">{unreadCount}</span>
+            )}
+          </div>
+        </div>
 
-        <div className={`dropdown-menu dropdown-menu-end${isOpen ? ' show' : ''}`} style={{ minWidth: '300px' }}>
-          <h6 className="dropdown-header">Notifications</h6>
+        <div tabIndex={0} className={`dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-80 ${isOpen ? 'block' : 'hidden'}`}>
+          <div className="menu-title">
+            <span>Notifications</span>
+          </div>
 
           {isLoading ? (
-            <div className="px-3 py-2">Loading notifications...</div>
+            <div className="px-4 py-2">
+              <span className="loading loading-spinner loading-sm"></span>
+              Loading notifications...
+            </div>
           ) : notifications.length === 0 ? (
-            <div className="px-3 py-2">No notifications</div>
+            <div className="px-4 py-2 text-base-content/70">No notifications</div>
           ) : (
-            <>
+            <div className="max-h-96 overflow-y-auto">
               {notifications.map(notification => (
                 <div
                   key={notification.id}
-                  className={`dropdown-item d-flex align-items-center ${!notification.isRead ? 'bg-light' : ''}`}
+                  className={`card card-compact mb-2 ${!notification.isRead ? 'bg-base-200' : 'bg-base-100'}`}
                 >
-                  <div className="flex-grow-1">
+                  <div className="card-body">
                     <Link
                       to={`/items/${notification.itemId}`}
                       onClick={() => handleMarkAsRead(notification.id)}
-                      className="text-decoration-none text-dark"
+                      className="link link-hover text-base-content"
                     >
-                      <p className="mb-1">{notification.message}</p>
-                      <small className="text-muted">{formatDate(notification.createdAt, true)}</small>
+                      <p className="text-sm mb-1">{notification.message}</p>
+                      <p className="text-xs text-base-content/70">{formatDate(notification.createdAt, true)}</p>
                     </Link>
 
-                    <div className="mt-1">
+                    <div className="card-actions justify-start mt-2">
                       <button
-                        className="btn btn-sm btn-link px-0 text-primary"
+                        className="btn btn-xs btn-link text-primary"
                         onClick={(e) => handleViewContact(notification.senderId, e)}
                       >
                         View Contact Info
@@ -135,7 +139,7 @@ const NotificationDropdown = () => {
 
                       {!notification.isRead && (
                         <button
-                          className="btn btn-sm btn-link text-secondary ms-2"
+                          className="btn btn-xs btn-link text-base-content/70"
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -147,17 +151,19 @@ const NotificationDropdown = () => {
                       )}
                       
                       <button
-                        className="btn btn-sm btn-link text-danger ms-2"
+                        className="btn btn-xs btn-ghost text-error"
                         onClick={(e) => handleDeleteNotification(notification.id, e)}
                         title="Delete notification"
                       >
-                        <i className="bi bi-trash"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   </div>
                 </div>
               ))}
-            </>
+            </div>
           )}
         </div>
       </div>

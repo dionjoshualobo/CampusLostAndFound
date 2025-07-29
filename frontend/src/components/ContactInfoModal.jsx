@@ -30,40 +30,71 @@ const ContactInfoModal = ({ userId, isOpen, onClose }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="modal-dialog">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title">User Contact Information</h5>
-            <button type="button" className="btn-close" onClick={onClose}></button>
-          </div>
-          
-          <div className="modal-body">
-            {isLoading ? (
-              <p>Loading user information...</p>
-            ) : error ? (
-              <div className="alert alert-danger">{error}</div>
-            ) : userInfo ? (
-              <div>
-                <p><strong>Name:</strong> {userInfo.name}</p>
-                <p><strong>Email:</strong> {userInfo.email}</p>
-                <p><strong>User Type:</strong> {userInfo.userType || 'Not specified'}</p>
-                <p><strong>Department:</strong> {userInfo.department || 'Not specified'}</p>
+    <div className="modal modal-open">
+      <div className="modal-box">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-bold text-lg">User Contact Information</h3>
+          <button className="btn btn-sm btn-circle btn-ghost" onClick={onClose}>✕</button>
+        </div>
+        
+        <div className="py-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <span className="loading loading-spinner loading-lg"></span>
+              <span className="ml-4">Loading user information...</span>
+            </div>
+          ) : error ? (
+            <div className="alert alert-error">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{error}</span>
+            </div>
+          ) : userInfo ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <span className="font-semibold">Name:</span>
+                  <span className="ml-2">{userInfo.name}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Email:</span>
+                  <span className="ml-2">{userInfo.email}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">User Type:</span>
+                  <span className="ml-2">{userInfo.userType || 'Not specified'}</span>
+                </div>
+                <div>
+                  <span className="font-semibold">Department:</span>
+                  <span className="ml-2">{userInfo.department || 'Not specified'}</span>
+                </div>
                 {userInfo.userType === 'student' && userInfo.semester && (
-                  <p><strong>Semester:</strong> {userInfo.semester}</p>
+                  <div>
+                    <span className="font-semibold">Semester:</span>
+                    <span className="ml-2">{userInfo.semester}</span>
+                  </div>
                 )}
-                <p><strong>Contact Info:</strong> {userInfo.contactInfo || 'Not provided'}</p>
+                <div>
+                  <span className="font-semibold">Contact Info:</span>
+                  <span className="ml-2">{userInfo.contactInfo || 'Not provided'}</span>
+                </div>
               </div>
-            ) : (
-              <p>No information available</p>
-            )}
-          </div>
-          
-          <div className="modal-footer">
-            <button type="button" className="btn btn-secondary" onClick={onClose}>
-              Close
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div className="alert alert-info">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>No information available</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="modal-action">
+          <button className="btn" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

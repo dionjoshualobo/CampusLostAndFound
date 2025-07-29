@@ -1,9 +1,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import NotificationDropdown from './NotificationDropdown';
-import DarkModeToggle from './DarkModeToggle';
+import ThemeSelector from './ThemeSelector';
 
-const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) => {
+const Navbar = ({ isAuthenticated, user, logout }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -12,89 +12,71 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light sticky-top">
-      <div className="container">
-        <Link className="navbar-brand fw-bold" to="/">
-          🎓 Campus Lost & Found
-        </Link>
-        
-        <button 
-          className="navbar-toggler" 
-          type="button" 
-          data-bs-toggle="collapse" 
-          data-bs-target="#navbarNav"
-          aria-controls="navbarNav" 
-          aria-expanded="false" 
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon"></span>
-        </button>
-        
-        <div className="collapse navbar-collapse" id="navbarNav">
-          <ul className="navbar-nav me-auto">
-            <li className="nav-item">
-              <Link className="nav-link" to="/">
-                <i className="bi bi-house-door me-1"></i>
-                Home
-              </Link>
-            </li>
+    <div className="navbar bg-base-100 shadow-lg sticky top-0 z-50">
+      <div className="navbar-start">
+        <div className="dropdown">
+          <div tabIndex={0} role="button" className="btn btn-ghost lg:hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h8m-8 6h16" />
+            </svg>
+          </div>
+          <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+            <li><Link to="/">Home</Link></li>
             {isAuthenticated && (
-              <li className="nav-item">
-                <Link className="nav-link" to="/items/new">
-                  <i className="bi bi-plus-circle me-1"></i>
-                  Report Item
-                </Link>
-              </li>
+              <li><Link to="/items/new">Report Item</Link></li>
             )}
           </ul>
-          
-          <div className="d-flex align-items-center gap-2">
-            <DarkModeToggle 
-              isDarkMode={isDarkMode} 
-              toggleDarkMode={toggleDarkMode} 
-            />
-            
-            {isAuthenticated ? (
-              <div className="dropdown">
-                <button 
-                  className="btn btn-outline-primary dropdown-toggle" 
-                  type="button" 
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <i className="bi bi-person-circle me-1"></i>
-                  {user?.name || 'User'}
-                </button>
-                <ul className="dropdown-menu dropdown-menu-end">
-                  <li>
-                    <Link className="dropdown-item" to="/profile">
-                      <i className="bi bi-person me-2"></i>
-                      Profile
-                    </Link>
-                  </li>
-                  <li><hr className="dropdown-divider" /></li>
-                  <li>
-                    <button className="dropdown-item" onClick={handleLogout}>
-                      <i className="bi bi-box-arrow-right me-2"></i>
-                      Logout
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            ) : (
-              <div className="d-flex gap-2">
-                <Link className="btn btn-outline-primary" to="/login">
-                  Login
-                </Link>
-                <Link className="btn btn-primary" to="/register">
-                  Register
-                </Link>
-              </div>
-            )}
-          </div>
         </div>
+        <Link className="btn btn-ghost text-xl font-bold" to="/">
+          🎓 Campus Lost & Found
+        </Link>
       </div>
-    </nav>
+      
+      <div className="navbar-center hidden lg:flex">
+        <ul className="menu menu-horizontal px-1">
+          <li><Link to="/">Home</Link></li>
+          {isAuthenticated && (
+            <li><Link to="/items/new">Report Item</Link></li>
+          )}
+        </ul>
+      </div>
+      
+      <div className="navbar-end gap-2">
+        <ThemeSelector />
+        
+        {isAuthenticated ? (
+          <>
+            <NotificationDropdown />
+            <div className="dropdown dropdown-end">
+              <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
+                <div className="w-10 rounded-full bg-base-300 flex items-center justify-center">
+                  <span className="text-base-content">
+                    {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                  </span>
+                </div>
+              </div>
+              <ul tabIndex={0} className="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+                <li className="menu-title">
+                  <span>{user?.name || 'User'}</span>
+                </li>
+                <li><Link to="/profile">Profile</Link></li>
+                <li><hr className="my-1" /></li>
+                <li><button onClick={handleLogout}>Logout</button></li>
+              </ul>
+            </div>
+          </>
+        ) : (
+          <div className="flex gap-2">
+            <Link className="btn btn-outline btn-primary" to="/login">
+              Login
+            </Link>
+            <Link className="btn btn-primary" to="/register">
+              Register
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

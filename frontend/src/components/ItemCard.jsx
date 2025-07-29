@@ -13,32 +13,31 @@ const ItemCard = ({ item }) => {
   };
   
   return (
-    <div className={`card mb-3 ${getStatusClass(item.status)}`}>
+    <div className="card bg-base-100 shadow-xl hover:shadow-2xl transition-shadow">
       <div className="card-body">
-        <h5 className="card-title">{item.title}</h5>
-        <h6 className="card-subtitle mb-2 text-muted">
-          Status: <span className={`fw-bold badge ${
-            item.status === 'lost' ? 'bg-danger' :
-            item.status === 'found' ? 'bg-primary' :
-            item.status === 'claimed' ? 'bg-warning' : 'bg-success'
+        <h2 className="card-title">
+          {item.title}
+          <div className={`badge ${
+            item.status === 'lost' ? 'badge-error' :
+            item.status === 'found' ? 'badge-primary' :
+            item.status === 'claimed' ? 'badge-warning' : 'badge-success'
           }`}>
             {item.status.toUpperCase()}
-          </span>
-        </h6>
-        <p className="card-text">
+          </div>
+        </h2>
+        
+        <p className="text-base-content/70">
           {item.description?.length > 100 
             ? `${item.description.substring(0, 100)}...` 
             : item.description}
         </p>
-        <div className="d-flex justify-content-between">
-          <small className="text-muted">
-            Location: {item.location || 'Not specified'}
-          </small>
-          <small className="text-muted">
-            Reported by: {item.userName || 'Anonymous'}
-          </small>
+        
+        <div className="flex justify-between text-sm text-base-content/60 mb-4">
+          <span>📍 {item.location || 'Not specified'}</span>
+          <span>👤 {item.userName || 'Anonymous'}</span>
         </div>
-        <div className="mt-3">
+        
+        <div className="card-actions justify-end">
           <Link to={`/items/${item.id}`} className="btn btn-primary btn-sm">
             View Details
           </Link>

@@ -117,144 +117,183 @@ const ItemForm = () => {
     }
   };
   
-  if (isLoadingCategories) return <div>Loading form...</div>;
+  if (isLoadingCategories) return (
+    <div className="flex items-center justify-center p-8">
+      <span className="loading loading-spinner loading-lg"></span>
+      <span className="ml-4">Loading form...</span>
+    </div>
+  );
   
   return (
-    <div className="row justify-content-center">
-      <div className="col-md-8">
-        <div className="card">
-          <div className="card-body">
-            <h2 className="card-title">Report {status === 'lost' ? 'Lost' : 'Found'} Item</h2>
+    <div className="flex justify-center">
+      <div className="card w-full max-w-2xl bg-base-100 shadow-xl">
+        <div className="card-body">
+          <h2 className="card-title text-2xl mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Report {status === 'lost' ? 'Lost' : 'Found'} Item
+          </h2>
+          
+          {error && (
+            <div className="alert alert-error mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
+          
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="form-control">
+              <label className="label" htmlFor="status">
+                <span className="label-text">Item Status</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                id="status"
+                name="status"
+                value={status}
+                onChange={onChange}
+                required
+              >
+                <option value="lost">Lost Item</option>
+                <option value="found">Found Item</option>
+              </select>
+            </div>
             
-            {error && <div className="alert alert-danger">{error}</div>}
-            
-            <form onSubmit={onSubmit}>
-              <div className="mb-3">
-                <label htmlFor="status" className="form-label">Item Status</label>
-                <select
-                  className="form-select"
-                  id="status"
-                  name="status"
-                  value={status}
-                  onChange={onChange}
-                  required
-                >
-                  <option value="lost">Lost Item</option>
-                  <option value="found">Found Item</option>
-                </select>
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="title" className="form-label">Title *</label>
-                <input
-                  type="text"
-                  className={`form-control ${validationErrors.title ? 'is-invalid' : ''}`}
-                  id="title"
-                  name="title"
-                  value={title}
-                  onChange={onChange}
-                  placeholder="E.g. Blue Backpack, iPhone 12, etc."
-                  required
-                />
-                {validationErrors.title && (
-                  <div className="invalid-feedback">{validationErrors.title}</div>
-                )}
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="categoryId" className="form-label">Category *</label>
-                <select
-                  className={`form-select ${validationErrors.categoryId ? 'is-invalid' : ''}`}
-                  id="categoryId"
-                  name="categoryId"
-                  value={categoryId}
-                  onChange={onChange}
-                  required
-                >
-                  <option value="">Select a category</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-                {validationErrors.categoryId && (
-                  <div className="invalid-feedback">{validationErrors.categoryId}</div>
-                )}
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="description" className="form-label">Description *</label>
-                <textarea
-                  className={`form-control ${validationErrors.description ? 'is-invalid' : ''}`}
-                  id="description"
-                  name="description"
-                  value={description}
-                  onChange={onChange}
-                  rows="3"
-                  placeholder="Provide any identifying details that might help"
-                  required
-                ></textarea>
-                {validationErrors.description && (
-                  <div className="invalid-feedback">{validationErrors.description}</div>
-                )}
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="location" className="form-label">Location *</label>
-                <input
-                  type="text"
-                  className={`form-control ${validationErrors.location ? 'is-invalid' : ''}`}
-                  id="location"
-                  name="location"
-                  value={location}
-                  onChange={onChange}
-                  placeholder="Where the item was lost or found"
-                  required
-                />
-                {validationErrors.location && (
-                  <div className="invalid-feedback">{validationErrors.location}</div>
-                )}
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="dateLost" className="form-label">
-                  Date {status === 'lost' ? 'Lost' : 'Found'} *
+            <div className="form-control">
+              <label className="label" htmlFor="title">
+                <span className="label-text">Title *</span>
+              </label>
+              <input
+                type="text"
+                className={`input input-bordered w-full ${validationErrors.title ? 'input-error' : ''}`}
+                id="title"
+                name="title"
+                value={title}
+                onChange={onChange}
+                placeholder="E.g. Blue Backpack, iPhone 12, etc."
+                required
+              />
+              {validationErrors.title && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.title}</span>
                 </label>
-                <input
-                  type="date"
-                  className={`form-control ${validationErrors.dateLost ? 'is-invalid' : ''}`}
-                  id="dateLost"
-                  name="dateLost"
-                  value={dateLost}
-                  onChange={onChange}
-                  max={getTodayDate()}
-                  required
-                />
-                {validationErrors.dateLost && (
-                  <div className="invalid-feedback">{validationErrors.dateLost}</div>
-                )}
-                <div className="form-text">You cannot select future dates</div>
-              </div>
-              
-              <div className="d-flex justify-content-between">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => navigate('/')}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Submitting...' : 'Submit Report'}
-                </button>
-              </div>
-            </form>
-          </div>
+              )}
+            </div>
+            
+            <div className="form-control">
+              <label className="label" htmlFor="categoryId">
+                <span className="label-text">Category *</span>
+              </label>
+              <select
+                className={`select select-bordered w-full ${validationErrors.categoryId ? 'select-error' : ''}`}
+                id="categoryId"
+                name="categoryId"
+                value={categoryId}
+                onChange={onChange}
+                required
+              >
+                <option value="">Select a category</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              {validationErrors.categoryId && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.categoryId}</span>
+                </label>
+              )}
+            </div>
+            
+            <div className="form-control">
+              <label className="label" htmlFor="description">
+                <span className="label-text">Description *</span>
+              </label>
+              <textarea
+                className={`textarea textarea-bordered w-full ${validationErrors.description ? 'textarea-error' : ''}`}
+                id="description"
+                name="description"
+                value={description}
+                onChange={onChange}
+                rows="3"
+                placeholder="Provide any identifying details that might help"
+                required
+              ></textarea>
+              {validationErrors.description && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.description}</span>
+                </label>
+              )}
+            </div>
+            
+            <div className="form-control">
+              <label className="label" htmlFor="location">
+                <span className="label-text">Location *</span>
+              </label>
+              <input
+                type="text"
+                className={`input input-bordered w-full ${validationErrors.location ? 'input-error' : ''}`}
+                id="location"
+                name="location"
+                value={location}
+                onChange={onChange}
+                placeholder="Where the item was lost or found"
+                required
+              />
+              {validationErrors.location && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.location}</span>
+                </label>
+              )}
+            </div>
+            
+            <div className="form-control">
+              <label className="label" htmlFor="dateLost">
+                <span className="label-text">
+                  Date {status === 'lost' ? 'Lost' : 'Found'} *
+                </span>
+              </label>
+              <input
+                type="date"
+                className={`input input-bordered w-full ${validationErrors.dateLost ? 'input-error' : ''}`}
+                id="dateLost"
+                name="dateLost"
+                value={dateLost}
+                onChange={onChange}
+                max={getTodayDate()}
+                required
+              />
+              {validationErrors.dateLost && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.dateLost}</span>
+                </label>
+              )}
+              <label className="label">
+                <span className="label-text-alt">You cannot select future dates</span>
+              </label>
+            </div>
+            
+            <div className="flex justify-between gap-4 pt-4">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => navigate('/')}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={`btn btn-primary ${isLoading ? 'loading' : ''}`}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Submitting...' : 'Submit Report'}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

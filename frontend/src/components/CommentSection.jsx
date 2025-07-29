@@ -63,59 +63,85 @@ const CommentSection = ({ itemId, isAuthenticated }) => {
     }
   };
   
-  if (isLoading) return <div>Loading comments...</div>;
+  if (isLoading) return (
+    <div className="flex items-center justify-center p-4">
+      <span className="loading loading-spinner loading-md"></span>
+      <span className="ml-2">Loading comments...</span>
+    </div>
+  );
   
   return (
-    <div className="comment-section mt-4">
-      <h4 className="mb-3">Comments</h4>
+    <div className="comment-section mt-8 space-y-4">
+      <h4 className="text-xl font-bold">Comments</h4>
       
-      {error && <div className="alert alert-danger">{error}</div>}
+      {error && (
+        <div className="alert alert-error">
+          <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
       
       {isAuthenticated && (
-        <form onSubmit={handleSubmit} className="mb-4">
-          <div className="mb-3">
-            <textarea
-              className="form-control"
-              rows="3"
-              placeholder="Add a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              required
-            ></textarea>
+        <form onSubmit={handleSubmit} className="card bg-base-100 shadow-xl">
+          <div className="card-body">
+            <div className="form-control">
+              <textarea
+                className="textarea textarea-bordered h-24"
+                placeholder="Add a comment..."
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                required
+              ></textarea>
+            </div>
+            <div className="card-actions justify-end">
+              <button
+                type="submit"
+                className={`btn btn-primary ${isSubmitting ? 'loading' : ''}`}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Posting...' : 'Post Comment'}
+              </button>
+            </div>
           </div>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Posting...' : 'Post Comment'}
-          </button>
         </form>
       )}
       
       {comments.length === 0 ? (
-        <div className="alert alert-info">No comments yet.</div>
+        <div className="alert alert-info">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>No comments yet.</span>
+        </div>
       ) : (
-        <div className="comment-list">
+        <div className="comment-list space-y-4">
           {comments.map(comment => (
-            <div key={comment.id} className="card mb-3">
+            <div key={comment.id} className="card bg-base-100 shadow-md">
               <div className="card-body">
-                <div className="d-flex justify-content-between">
-                  <h6 className="card-subtitle mb-2 text-muted">
-                    {comment.userName}
-                  </h6>
-                  <small className="text-muted">
-                    {formatDate(comment.createdAt, true)}
-                  </small>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <h6 className="font-semibold text-base-content">
+                        {comment.userName}
+                      </h6>
+                      <small className="text-base-content/60">
+                        {formatDate(comment.createdAt, true)}
+                      </small>
+                    </div>
+                    <p className="text-base-content/80">{comment.content}</p>
+                  </div>
                 </div>
-                <p className="card-text">{comment.content}</p>
                 {user.id === comment.userId && (
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => handleDelete(comment.id)}
-                  >
-                    Delete
-                  </button>
+                  <div className="card-actions justify-end">
+                    <button
+                      className="btn btn-outline btn-error btn-sm"
+                      onClick={() => handleDelete(comment.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

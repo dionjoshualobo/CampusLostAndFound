@@ -7,14 +7,12 @@ import Register from './pages/Register';
 import ItemForm from './pages/ItemForm';
 import ItemDetails from './pages/ItemDetails';
 import Profile from './pages/Profile';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import './App.css';
+import './index.css';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   
   useEffect(() => {
     // Check if user is authenticated on app load
@@ -26,44 +24,12 @@ function App() {
       setUser(userData);
     }
     
-    // Check for saved dark mode preference
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode) {
-      const isDark = JSON.parse(savedDarkMode);
-      setIsDarkMode(isDark);
-      // Apply theme immediately
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    } else {
-      // Check system preference
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(prefersDark);
-      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-    }
+    // Initialize theme from localStorage or default to light
+    const savedTheme = localStorage.getItem('daisyui-theme') || 'light';
+    document.documentElement.setAttribute('data-theme', savedTheme);
     
     setIsLoading(false);
   }, []);
-  
-  // Listen for system theme changes
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => {
-      // Only auto-switch if user hasn't manually set a preference
-      const savedDarkMode = localStorage.getItem('darkMode');
-      if (!savedDarkMode) {
-        setIsDarkMode(e.matches);
-        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-      }
-    };
-    
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
-  
-  // Apply theme changes
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
-    localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
-  }, [isDarkMode]);
   
   const login = (token, userData) => {
     localStorage.setItem('token', token);
@@ -79,32 +45,26 @@ function App() {
     setUser(null);
   };
   
-  const toggleDarkMode = () => {
-    setIsDarkMode(prevMode => !prevMode);
-  };
-  
   if (isLoading) {
     return (
-      <div className="container mt-5 text-center">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <span className="loading loading-spinner loading-lg"></span>
+          <p className="mt-4 text-lg">Loading Campus Lost & Found...</p>
         </div>
-        <p className="mt-3">Loading Campus Lost & Found...</p>
       </div>
     );
   }
   
   return (
     <Router>
-      <div className="App">
+      <div className="App min-h-screen bg-base-100 theme-transition">
         <Navbar 
           isAuthenticated={isAuthenticated} 
           user={user} 
           logout={logout}
-          isDarkMode={isDarkMode}
-          toggleDarkMode={toggleDarkMode}
         />
-        <div className="container mt-4">
+        <div className="max-w-7xl mx-auto px-4 py-8">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route 

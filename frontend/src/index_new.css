@@ -12,59 +12,6 @@
   transition: all 0.3s ease;
 }
 
-/* Fix for SVG icons with stroke-current */
-.stroke-current {
-  stroke: currentColor;
-}
-
-/* Ensure SVG icons display properly */
-svg.stroke-current path,
-svg.stroke-current circle,
-svg.stroke-current rect,
-svg.stroke-current line,
-svg.stroke-current polyline,
-svg.stroke-current polygon {
-  stroke: currentColor;
-}
-
-/* Improved scrollbar styles */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--bc) / 0.2);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--bc) / 0.3);
-}
-
-/* Custom focus styles for better accessibility */
-.btn:focus-visible,
-.input:focus-visible,
-.select:focus-visible,
-.textarea:focus-visible {
-  outline: 2px solid hsl(var(--p));
-  outline-offset: 2px;
-}
-
-/* Improved card hover effects */
-.card:hover {
-  transform: translateY(-2px);
-  transition: transform 0.2s ease;
-}
-
-/* Better loading states */
-.loading {
-  animation-duration: 1s;
-}
-
 /* Custom theme preview colors */
 .theme-preview {
   width: 1rem;
@@ -72,7 +19,6 @@ svg.stroke-current polygon {
   border-radius: 50%;
   display: inline-block;
   margin-right: 0.5rem;
-  border: 1px solid hsl(var(--bc) / 0.2);
 }
 
 .theme-preview.light { background: linear-gradient(45deg, #ffffff 50%, #000000 50%); }
@@ -107,26 +53,3 @@ svg.stroke-current polygon {
 .theme-preview.dim { background: linear-gradient(45deg, #2a323c 50%, #a6adbb 50%); }
 .theme-preview.nord { background: linear-gradient(45deg, #3b4252 50%, #88c0d0 50%); }
 .theme-preview.sunset { background: linear-gradient(45deg, #fffbeb 50%, #f97316 50%); }
-
-/* Responsive grid improvements */
-@media (max-width: 768px) {
-  .grid-cols-1.md\:grid-cols-2.lg\:grid-cols-3 {
-    grid-template-columns: repeat(1, minmax(0, 1fr));
-  }
-  
-  .max-w-7xl {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
-
-/* Better spacing for mobile */
-@media (max-width: 640px) {
-  .card-body {
-    padding: 1.5rem;
-  }
-  
-  .space-y-6 > * + * {
-    margin-top: 1.5rem;
-  }
-}

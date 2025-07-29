@@ -39,34 +39,40 @@ const Dashboard = () => {
   });
   
   return (
-    <div className="dashboard mb-5">
-      <h3 className="mb-4">Dashboard</h3>
+    <div className="mb-8">
+      <h3 className="text-2xl font-bold mb-6 text-red-500">Dashboard (Test: This should be red)</h3>
       
-      <div className="row mb-4">
-        <div className="col-md-4">
-          <div className="card bg-danger text-white">
-            <div className="card-body text-center">
-              <h5 className="card-title">Lost Items</h5>
-              <h2>{counters.lost}</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="stats shadow bg-blue-100">
+          <div className="stat">
+            <div className="stat-figure text-error">
+              {/* SVG removed for testing */}
             </div>
+            <div className="stat-title">Lost Items</div>
+            <div className="stat-value text-error">{counters.lost}</div>
+            <div className="stat-desc">Items reported as lost</div>
           </div>
         </div>
         
-        <div className="col-md-4">
-          <div className="card bg-primary text-white">
-            <div className="card-body text-center">
-              <h5 className="card-title">Found Items</h5>
-              <h2>{counters.found}</h2>
+        <div className="stats shadow bg-green-100">
+          <div className="stat">
+            <div className="stat-figure text-primary">
+              {/* SVG removed for testing */}
             </div>
+            <div className="stat-title">Found Items</div>
+            <div className="stat-value text-primary">{counters.found}</div>
+            <div className="stat-desc">Items reported as found</div>
           </div>
         </div>
         
-        <div className="col-md-4">
-          <div className="card bg-success text-white">
-            <div className="card-body text-center">
-              <h5 className="card-title">Resolved</h5>
-              <h2>{counters.resolved}</h2>
+        <div className="stats shadow bg-yellow-100">
+          <div className="stat">
+            <div className="stat-figure text-success">
+              {/* SVG removed for testing */}
             </div>
+            <div className="stat-title">Resolved</div>
+            <div className="stat-value text-success">{counters.resolved}</div>
+            <div className="stat-desc">Successfully returned</div>
           </div>
         </div>
       </div>

@@ -78,91 +78,116 @@ const Register = ({ login }) => {
   };
   
   return (
-    <div className="row justify-content-center">
-      <div className="col-md-6">
-        <div className="card">
-          <div className="card-body">
-            <h2 className="card-title text-center mb-4">Register</h2>
+    <div className="flex justify-center">
+      <div className="card w-full max-w-2xl bg-base-100 shadow-xl">
+        <div className="card-body">
+          <h2 className="card-title justify-center text-2xl mb-6">Register</h2>
+          
+          {error && (
+            <div className="alert alert-error mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{error}</span>
+            </div>
+          )}
+          
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="form-control">
+              <label className="label" htmlFor="name">
+                <span className="label-text">Name *</span>
+              </label>
+              <input
+                type="text"
+                className={`input input-bordered w-full ${validationErrors.name ? 'input-error' : ''}`}
+                id="name"
+                name="name"
+                value={name}
+                onChange={onChange}
+                required
+              />
+              {validationErrors.name && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.name}</span>
+                </label>
+              )}
+            </div>
             
-            {error && <div className="alert alert-danger">{error}</div>}
+            <div className="form-control">
+              <label className="label" htmlFor="email">
+                <span className="label-text">Email Address *</span>
+              </label>
+              <input
+                type="email"
+                className={`input input-bordered w-full ${validationErrors.email ? 'input-error' : ''}`}
+                id="email"
+                name="email"
+                value={email}
+                onChange={onChange}
+                required
+              />
+              {validationErrors.email && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.email}</span>
+                </label>
+              )}
+            </div>
             
-            <form onSubmit={onSubmit}>
-              <div className="mb-3">
-                <label htmlFor="name" className="form-label">Name *</label>
-                <input
-                  type="text"
-                  className={`form-control ${validationErrors.name ? 'is-invalid' : ''}`}
-                  id="name"
-                  name="name"
-                  value={name}
-                  onChange={onChange}
-                  required
-                />
-                {validationErrors.name && (
-                  <div className="invalid-feedback">{validationErrors.name}</div>
-                )}
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="email" className="form-label">Email Address *</label>
-                <input
-                  type="email"
-                  className={`form-control ${validationErrors.email ? 'is-invalid' : ''}`}
-                  id="email"
-                  name="email"
-                  value={email}
-                  onChange={onChange}
-                  required
-                />
-                {validationErrors.email && (
-                  <div className="invalid-feedback">{validationErrors.email}</div>
-                )}
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="password" className="form-label">Password *</label>
-                <input
-                  type="password"
-                  className={`form-control ${validationErrors.password ? 'is-invalid' : ''}`}
-                  id="password"
-                  name="password"
-                  value={password}
-                  onChange={onChange}
-                  required
-                />
-                {validationErrors.password && (
-                  <div className="invalid-feedback">{validationErrors.password}</div>
-                )}
-              </div>
-              
-              <div className="mb-3">
-                <label htmlFor="confirmPassword" className="form-label">Confirm Password *</label>
-                <input
-                  type="password"
-                  className={`form-control ${validationErrors.confirmPassword ? 'is-invalid' : ''}`}
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={confirmPassword}
-                  onChange={onChange}
-                  required
-                />
-                {validationErrors.confirmPassword && (
-                  <div className="invalid-feedback">{validationErrors.confirmPassword}</div>
-                )}
-              </div>
-              
+            <div className="form-control">
+              <label className="label" htmlFor="password">
+                <span className="label-text">Password *</span>
+              </label>
+              <input
+                type="password"
+                className={`input input-bordered w-full ${validationErrors.password ? 'input-error' : ''}`}
+                id="password"
+                name="password"
+                value={password}
+                onChange={onChange}
+                required
+              />
+              {validationErrors.password && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.password}</span>
+                </label>
+              )}
+            </div>
+            
+            <div className="form-control">
+              <label className="label" htmlFor="confirmPassword">
+                <span className="label-text">Confirm Password *</span>
+              </label>
+              <input
+                type="password"
+                className={`input input-bordered w-full ${validationErrors.confirmPassword ? 'input-error' : ''}`}
+                id="confirmPassword"
+                name="confirmPassword"
+                value={confirmPassword}
+                onChange={onChange}
+                required
+              />
+              {validationErrors.confirmPassword && (
+                <label className="label">
+                  <span className="label-text-alt text-error">{validationErrors.confirmPassword}</span>
+                </label>
+              )}
+            </div>
+            
+            <div className="form-control mt-6">
               <button 
                 type="submit" 
-                className="btn btn-primary w-100"
+                className={`btn btn-primary w-full ${isLoading ? 'loading' : ''}`}
                 disabled={isLoading}
               >
                 {isLoading ? 'Registering...' : 'Register'}
               </button>
-            </form>
-            
-            <div className="mt-3 text-center">
-              <p>Already have an account? <Link to="/login">Login</Link></p>
             </div>
+          </form>
+          
+          <div className="divider">OR</div>
+          
+          <div className="text-center">
+            <p>Already have an account? <Link to="/login" className="link link-primary">Login</Link></p>
           </div>
         </div>
       </div>

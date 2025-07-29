@@ -49,28 +49,39 @@ const Home = () => {
   if (error) return <div className="alert alert-danger">{error}</div>;
   
   return (
-    <div>
-      <h1>Campus Lost & Found</h1>
-      <p className="lead">Browse through lost and found items on campus</p>
+    <div className="space-y-6">
+      <div className="hero bg-base-200 rounded-lg">
+        <div className="hero-content text-center">
+          <div className="max-w-md">
+            <h1 className="text-5xl font-bold">Campus Lost & Found</h1>
+            <p className="py-6">Browse through lost and found items on campus</p>
+          </div>
+        </div>
+      </div>
       
       <Dashboard />
       
-      <div className="row mb-4">
-        <div className="col-md-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="form-control">
           <div className="input-group">
             <input
               type="text"
-              className="form-control"
               placeholder="Search items..."
+              className="input input-bordered w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            <button className="btn btn-square">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
           </div>
         </div>
         
-        <div className="col-md-4">
+        <div className="form-control">
           <select 
-            className="form-select"
+            className="select select-bordered w-full"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
@@ -82,9 +93,9 @@ const Home = () => {
           </select>
         </div>
         
-        <div className="col-md-4">
+        <div className="form-control">
           <select 
-            className="form-select"
+            className="select select-bordered w-full"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
@@ -99,13 +110,16 @@ const Home = () => {
       </div>
       
       {filteredItems.length === 0 ? (
-        <div className="alert alert-info">No items found.</div>
+        <div className="alert alert-info">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span>No items found.</span>
+        </div>
       ) : (
-        <div className="row">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredItems.map(item => (
-            <div key={item.id} className="col-md-6 col-lg-4 mb-4">
-              <ItemCard item={item} />
-            </div>
+            <ItemCard key={item.id} item={item} />
           ))}
         </div>
       )}

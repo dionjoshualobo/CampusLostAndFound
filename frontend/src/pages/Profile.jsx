@@ -146,44 +146,75 @@ const Profile = () => {
   if (isLoading) return <div>Loading profile...</div>;
   
   return (
-    <div className="row">
-      <div className="col-md-3">
-        <div className="list-group mb-4">
-          <button
-            className={`list-group-item list-group-item-action ${activeTab === 'profile' ? 'active' : ''}`}
-            onClick={() => setActiveTab('profile')}
-          >
-            Profile Information
-          </button>
-          <button
-            className={`list-group-item list-group-item-action ${activeTab === 'password' ? 'active' : ''}`}
-            onClick={() => setActiveTab('password')}
-          >
-            Change Password
-          </button>
-          <button
-            className={`list-group-item list-group-item-action ${activeTab === 'items' ? 'active' : ''}`}
-            onClick={() => setActiveTab('items')}
-          >
-            My Items
-          </button>
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="lg:col-span-1">
+        <div className="menu bg-base-200 rounded-box p-2">
+          <li>
+            <button
+              className={`${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Profile Information
+            </button>
+          </li>
+          <li>
+            <button
+              className={`${activeTab === 'password' ? 'active' : ''}`}
+              onClick={() => setActiveTab('password')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Change Password
+            </button>
+          </li>
+          <li>
+            <button
+              className={`${activeTab === 'items' ? 'active' : ''}`}
+              onClick={() => setActiveTab('items')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+              My Items
+            </button>
+          </li>
         </div>
       </div>
       
-      <div className="col-md-9">
-        {error && <div className="alert alert-danger">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
+      <div className="lg:col-span-3">
+        {error && (
+          <div className="alert alert-error mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="alert alert-success mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{success}</span>
+          </div>
+        )}
         
         {activeTab === 'profile' && (
-          <div className="card">
-            <div className="card-header">Profile Information</div>
+          <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
-              <form onSubmit={handleProfileSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="name" className="form-label">Name</label>
+              <h2 className="card-title mb-6">Profile Information</h2>
+              <form onSubmit={handleProfileSubmit} className="space-y-4">
+                <div className="form-control">
+                  <label className="label" htmlFor="name">
+                    <span className="label-text">Name</span>
+                  </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="input input-bordered w-full"
                     id="name"
                     name="name"
                     value={profileData.name}
@@ -192,23 +223,29 @@ const Profile = () => {
                   />
                 </div>
                 
-                <div className="mb-3">
-                  <label htmlFor="email" className="form-label">Email</label>
+                <div className="form-control">
+                  <label className="label" htmlFor="email">
+                    <span className="label-text">Email</span>
+                  </label>
                   <input
                     type="email"
-                    className="form-control"
+                    className="input input-bordered w-full"
                     id="email"
                     name="email"
                     value={profileData.email || ''}
                     disabled
                   />
-                  <div className="form-text">Email cannot be changed</div>
+                  <label className="label">
+                    <span className="label-text-alt">Email cannot be changed</span>
+                  </label>
                 </div>
                 
-                <div className="mb-3">
-                  <label htmlFor="userType" className="form-label">User Type</label>
+                <div className="form-control">
+                  <label className="label" htmlFor="userType">
+                    <span className="label-text">User Type</span>
+                  </label>
                   <select
-                    className="form-select"
+                    className="select select-bordered w-full"
                     id="userType"
                     name="userType"
                     value={profileData.userType}
@@ -220,10 +257,12 @@ const Profile = () => {
                   </select>
                 </div>
                 
-                <div className="mb-3">
-                  <label htmlFor="department" className="form-label">Department</label>
+                <div className="form-control">
+                  <label className="label" htmlFor="department">
+                    <span className="label-text">Department</span>
+                  </label>
                   <select
-                    className="form-select"
+                    className="select select-bordered w-full"
                     id="department"
                     name="department"
                     value={profileData.department}
@@ -238,10 +277,12 @@ const Profile = () => {
                 </div>
                 
                 {profileData.userType === 'student' && (
-                  <div className="mb-3">
-                    <label htmlFor="semester" className="form-label">Semester</label>
+                  <div className="form-control">
+                    <label className="label" htmlFor="semester">
+                      <span className="label-text">Semester</span>
+                    </label>
                     <select
-                      className="form-select"
+                      className="select select-bordered w-full"
                       id="semester"
                       name="semester"
                       value={profileData.semester}
@@ -256,11 +297,13 @@ const Profile = () => {
                   </div>
                 )}
                 
-                <div className="mb-3">
-                  <label htmlFor="contactInfo" className="form-label">Contact Information</label>
+                <div className="form-control">
+                  <label className="label" htmlFor="contactInfo">
+                    <span className="label-text">Contact Information</span>
+                  </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className="input input-bordered w-full"
                     id="contactInfo"
                     name="contactInfo"
                     value={profileData.contactInfo}
@@ -269,28 +312,32 @@ const Profile = () => {
                   />
                 </div>
                 
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isUpdating}
-                >
-                  {isUpdating ? 'Updating...' : 'Update Profile'}
-                </button>
+                <div className="form-control mt-6">
+                  <button
+                    type="submit"
+                    className={`btn btn-primary ${isUpdating ? 'loading' : ''}`}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? 'Updating...' : 'Update Profile'}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
         )}
         
         {activeTab === 'password' && (
-          <div className="card">
-            <div className="card-header">Change Password</div>
+          <div className="card bg-base-100 shadow-xl">
             <div className="card-body">
-              <form onSubmit={handlePasswordSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="currentPassword" className="form-label">Current Password</label>
+              <h2 className="card-title mb-6">Change Password</h2>
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div className="form-control">
+                  <label className="label" htmlFor="currentPassword">
+                    <span className="label-text">Current Password</span>
+                  </label>
                   <input
                     type="password"
-                    className="form-control"
+                    className="input input-bordered w-full"
                     id="currentPassword"
                     name="currentPassword"
                     value={passwordData.currentPassword}
@@ -299,11 +346,13 @@ const Profile = () => {
                   />
                 </div>
                 
-                <div className="mb-3">
-                  <label htmlFor="newPassword" className="form-label">New Password</label>
+                <div className="form-control">
+                  <label className="label" htmlFor="newPassword">
+                    <span className="label-text">New Password</span>
+                  </label>
                   <input
                     type="password"
-                    className="form-control"
+                    className="input input-bordered w-full"
                     id="newPassword"
                     name="newPassword"
                     value={passwordData.newPassword}
@@ -312,11 +361,13 @@ const Profile = () => {
                   />
                 </div>
                 
-                <div className="mb-3">
-                  <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
+                <div className="form-control">
+                  <label className="label" htmlFor="confirmPassword">
+                    <span className="label-text">Confirm New Password</span>
+                  </label>
                   <input
                     type="password"
-                    className="form-control"
+                    className="input input-bordered w-full"
                     id="confirmPassword"
                     name="confirmPassword"
                     value={passwordData.confirmPassword}
@@ -325,36 +376,43 @@ const Profile = () => {
                   />
                 </div>
                 
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isChangingPassword}
-                >
-                  {isChangingPassword ? 'Changing...' : 'Change Password'}
-                </button>
+                <div className="form-control mt-6">
+                  <button
+                    type="submit"
+                    className={`btn btn-primary ${isChangingPassword ? 'loading' : ''}`}
+                    disabled={isChangingPassword}
+                  >
+                    {isChangingPassword ? 'Changing...' : 'Change Password'}
+                  </button>
+                </div>
               </form>
             </div>
           </div>
         )}
         
         {activeTab === 'items' && (
-          <div className="card">
-            <div className="card-header">
-              <div className="d-flex justify-content-between align-items-center">
-                My Items
-                <Link to="/items/new" className="btn btn-sm btn-primary">
+          <div className="card bg-base-100 shadow-xl">
+            <div className="card-body">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="card-title">My Items</h2>
+                <Link to="/items/new" className="btn btn-primary btn-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                  </svg>
                   Report New Item
                 </Link>
               </div>
-            </div>
-            <div className="card-body">
+              
               {userItems.length === 0 ? (
                 <div className="alert alert-info">
-                  You haven't reported any items yet.
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" className="stroke-current shrink-0 w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <span>You haven't reported any items yet.</span>
                 </div>
               ) : (
-                <div className="table-responsive">
-                  <table className="table table-hover">
+                <div className="overflow-x-auto">
+                  <table className="table table-zebra w-full">
                     <thead>
                       <tr>
                         <th>Title</th>
@@ -366,21 +424,25 @@ const Profile = () => {
                     </thead>
                     <tbody>
                       {userItems.map(item => (
-                        <tr key={item.id}>
-                          <td>{item.title}</td>
+                        <tr key={item.id} className="hover">
+                          <td className="font-medium">{item.title}</td>
                           <td>
-                            <span className={`badge ${
-                              item.status === 'lost' ? 'bg-danger' :
-                              item.status === 'found' ? 'bg-primary' :
-                              item.status === 'claimed' ? 'bg-warning' : 'bg-success'
+                            <div className={`badge ${
+                              item.status === 'lost' ? 'badge-error' :
+                              item.status === 'found' ? 'badge-primary' :
+                              item.status === 'claimed' ? 'badge-warning' : 'badge-success'
                             }`}>
                               {item.status.toUpperCase()}
-                            </span>
+                            </div>
                           </td>
                           <td>{item.categoryName || 'Not specified'}</td>
                           <td>{formatDate(item.createdAt)}</td>
                           <td>
-                            <Link to={`/items/${item.id}`} className="btn btn-sm btn-outline-primary me-2">
+                            <Link to={`/items/${item.id}`} className="btn btn-ghost btn-sm">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
                               View
                             </Link>
                           </td>
