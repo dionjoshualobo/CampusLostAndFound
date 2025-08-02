@@ -86,6 +86,14 @@ JWT_SECRET=your_jwt_secret_key
 PORT=5000
 ```
 
+**Generate a secure JWT secret:**
+- In VS Code, open the terminal (Ctrl+` or Cmd+`)
+- Run the following command to generate a random 64-character string:
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+- Copy the generated string and use it as your `JWT_SECRET` value
+
 5. Set up the database tables (you'll need to create the schema based on the application requirements)
 
 6. Start the backend server:
