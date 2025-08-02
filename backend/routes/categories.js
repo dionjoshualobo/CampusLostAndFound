@@ -5,8 +5,8 @@ const db = require('../config/db');
 // Get all categories
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM categories ORDER BY name');
-    res.json(rows);
+    const result = await db.query('SELECT * FROM categories ORDER BY name');
+    res.json(result.rows);
   } catch (error) {
     console.error('Get categories error:', error);
     res.status(500).json({ message: 'Server error' });

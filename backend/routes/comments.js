@@ -6,15 +6,15 @@ const auth = require('../middleware/auth');
 // Get comments for an item
 router.get('/item/:itemId', async (req, res) => {
   try {
-    const [rows] = await db.execute(`
+    const result = await db.query(`
       SELECT c.*, u.name as userName 
       FROM comments c
       JOIN users u ON c.userId = u.id
-      WHERE c.itemId = ?
+      WHERE c.itemId = $1
       ORDER BY c.createdAt DESC
     `, [req.params.itemId]);
     
-    res.json(rows);
+    res.json(result.rows);
   } catch (error) {
     console.error('Get comments error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -31,26 +31,26 @@ router.post('/', auth, async (req, res) => {
     }
     
     // Check if item exists
-    const [itemRows] = await db.execute('SELECT * FROM items WHERE id = ?', [itemId]);
-    if (itemRows.length === 0) {
+    const itemResult = await db.query('SELECT * FROM items WHERE id = $1', [itemId]);
+    if (itemResult.rows.length === 0) {
       return res.status(404).json({ message: 'Item not found' });
     }
     
     // Insert comment
-    const [result] = await db.execute(
-      'INSERT INTO comments (itemId, userId, content) VALUES (?, ?, ?)',
+    const insertResult = await db.query(
+      'INSERT INTO comments (itemId, userId, content) VALUES ($1, $2, $3) RETURNING id',
       [itemId, req.user.id, content]
     );
     
     // Get the new comment with user info
-    const [newComment] = await db.execute(`
+    const commentResult = await db.query(`
       SELECT c.*, u.name as userName 
       FROM comments c
       JOIN users u ON c.userId = u.id
-      WHERE c.id = ?
-    `, [result.insertId]);
+      WHERE c.id = $1
+    `, [insertResult.rows[0].id]);
     
-    res.status(201).json(newComment[0]);
+    res.status(201).json(commentResult.rows[0]);
   } catch (error) {
     console.error('Add comment error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -61,17 +61,17 @@ router.post('/', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     // Check if comment exists and belongs to user
-    const [rows] = await db.execute('SELECT * FROM comments WHERE id = ?', [req.params.id]);
+    const result = await db.query('SELECT * FROM comments WHERE id = $1', [req.params.id]);
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Comment not found' });
     }
     
-    if (rows[0].userId !== req.user.id) {
+    if (result.rows[0].userid !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to delete this comment' });
     }
     
-    await db.execute('DELETE FROM comments WHERE id = ?', [req.params.id]);
+    await db.query('DELETE FROM comments WHERE id = $1', [req.params.id]);
     
     res.json({ message: 'Comment removed' });
   } catch (error) {

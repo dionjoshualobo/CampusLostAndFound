@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getUserProfile, updateUserProfile, changePassword } from '../api';
 import { formatDate } from '../utils/dateUtils';
+import { isProfileComplete, validateContactInfo } from '../utils/profileUtils';
 
 // List of department options
 const departments = [
@@ -36,6 +37,21 @@ const Profile = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [showCompletionAlert, setShowCompletionAlert] = useState(false);
+  const [validationErrors, setValidationErrors] = useState({});
+  
+  // Check if user was redirected here for profile completion
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (searchParams.get('redirect') === 'true') {
+      setShowCompletionAlert(true);
+      if (reason === 'mandatory') {
+        setError('Profile completion is mandatory. Please fill in all required fields to continue using the platform.');
+      }
+    }
+  }, [searchParams]);
   
   useEffect(() => {
     const fetchProfile = async () => {
@@ -77,11 +93,52 @@ const Profile = () => {
     });
   };
   
+  const validateProfileForm = () => {
+    const errors = {};
+    
+    if (!profileData.name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    if (!profileData.userType) {
+      errors.userType = 'User type is required';
+    }
+    
+    if (!profileData.department) {
+      errors.department = 'Department is required';
+    }
+    
+    if (profileData.userType === 'student' && !profileData.semester) {
+      errors.semester = 'Semester is required for students';
+    }
+    
+    if (!profileData.contactInfo.trim()) {
+      errors.contactInfo = 'Contact information is required';
+    } else {
+      const contactValidation = validateContactInfo(profileData.contactInfo);
+      if (!contactValidation.isValid) {
+        errors.contactInfo = contactValidation.message;
+      }
+    }
+    
+    return errors;
+  };
+  
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
-    setIsUpdating(true);
     setError(null);
     setSuccess(null);
+    setValidationErrors({});
+    
+    // Validate form
+    const errors = validateProfileForm();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setError('Please fix the validation errors below.');
+      return;
+    }
+    
+    setIsUpdating(true);
     
     try {
       const response = await updateUserProfile({
@@ -101,7 +158,31 @@ const Profile = () => {
         contactInfo: response.data.contactInfo || ''
       });
       
-      setSuccess('Profile updated successfully');
+      // Update localStorage with new user data
+      const updatedUser = {
+        ...JSON.parse(localStorage.getItem('user') || '{}'),
+        ...response.data
+      };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      // Check if profile is now complete
+      if (isProfileComplete(updatedUser)) {
+        setSuccess('Profile updated successfully! You can now access all features.');
+        setShowCompletionAlert(false);
+        
+        // If this was a redirect for completion, show option to go back
+        if (searchParams.get('redirect') === 'true') {
+          setTimeout(() => {
+            const shouldGoBack = window.confirm('Profile completed! Would you like to go back to what you were doing?');
+            if (shouldGoBack) {
+              navigate(-1);
+            }
+          }, 2000);
+        }
+      } else {
+        setSuccess('Profile updated successfully');
+      }
+      
       setIsUpdating(false);
     } catch (err) {
       console.error('Error updating profile:', err);
@@ -171,6 +252,17 @@ const Profile = () => {
       </div>
       
       <div className="col-md-9">
+        {showCompletionAlert && (
+          <div className="alert alert-warning alert-dismissible fade show" role="alert">
+            <strong>Profile completion required!</strong> Please fill in all the required fields below to access all features of the platform.
+            <button 
+              type="button" 
+              className="btn-close" 
+              onClick={() => setShowCompletionAlert(false)}
+            ></button>
+          </div>
+        )}
+        
         {error && <div className="alert alert-danger">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
         
@@ -178,18 +270,27 @@ const Profile = () => {
           <div className="card">
             <div className="card-header">Profile Information</div>
             <div className="card-body">
+              <div className="alert alert-info mb-4">
+                <strong>All fields are mandatory.</strong> Complete your profile to access all platform features.
+              </div>
+              
               <form onSubmit={handleProfileSubmit}>
                 <div className="mb-3">
-                  <label htmlFor="name" className="form-label">Name</label>
+                  <label htmlFor="name" className="form-label">
+                    Name <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${validationErrors.name ? 'is-invalid' : ''}`}
                     id="name"
                     name="name"
                     value={profileData.name}
                     onChange={handleProfileChange}
                     required
                   />
+                  {validationErrors.name && (
+                    <div className="invalid-feedback">{validationErrors.name}</div>
+                  )}
                 </div>
                 
                 <div className="mb-3">
@@ -206,24 +307,32 @@ const Profile = () => {
                 </div>
                 
                 <div className="mb-3">
-                  <label htmlFor="userType" className="form-label">User Type</label>
+                  <label htmlFor="userType" className="form-label">
+                    User Type <span className="text-danger">*</span>
+                  </label>
                   <select
-                    className="form-select"
+                    className={`form-select ${validationErrors.userType ? 'is-invalid' : ''}`}
                     id="userType"
                     name="userType"
                     value={profileData.userType}
                     onChange={handleProfileChange}
                     required
                   >
+                    <option value="">Select User Type</option>
                     <option value="student">Student</option>
                     <option value="faculty">Faculty</option>
                   </select>
+                  {validationErrors.userType && (
+                    <div className="invalid-feedback">{validationErrors.userType}</div>
+                  )}
                 </div>
                 
                 <div className="mb-3">
-                  <label htmlFor="department" className="form-label">Department</label>
+                  <label htmlFor="department" className="form-label">
+                    Department <span className="text-danger">*</span>
+                  </label>
                   <select
-                    className="form-select"
+                    className={`form-select ${validationErrors.department ? 'is-invalid' : ''}`}
                     id="department"
                     name="department"
                     value={profileData.department}
@@ -235,13 +344,18 @@ const Profile = () => {
                       <option key={index} value={dept}>{dept}</option>
                     ))}
                   </select>
+                  {validationErrors.department && (
+                    <div className="invalid-feedback">{validationErrors.department}</div>
+                  )}
                 </div>
                 
                 {profileData.userType === 'student' && (
                   <div className="mb-3">
-                    <label htmlFor="semester" className="form-label">Semester</label>
+                    <label htmlFor="semester" className="form-label">
+                      Semester <span className="text-danger">*</span>
+                    </label>
                     <select
-                      className="form-select"
+                      className={`form-select ${validationErrors.semester ? 'is-invalid' : ''}`}
                       id="semester"
                       name="semester"
                       value={profileData.semester}
@@ -253,20 +367,36 @@ const Profile = () => {
                         <option key={num} value={num}>{num}</option>
                       ))}
                     </select>
+                    {validationErrors.semester && (
+                      <div className="invalid-feedback">{validationErrors.semester}</div>
+                    )}
                   </div>
                 )}
                 
                 <div className="mb-3">
-                  <label htmlFor="contactInfo" className="form-label">Contact Information</label>
+                  <label htmlFor="contactInfo" className="form-label">
+                    Contact Information <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="text"
-                    className="form-control"
+                    className={`form-control ${validationErrors.contactInfo ? 'is-invalid' : ''}`}
                     id="contactInfo"
                     name="contactInfo"
                     value={profileData.contactInfo}
                     onChange={handleProfileChange}
-                    placeholder="Phone number or alternative contact method"
+                    placeholder="Phone number (10 digits) or alternative email"
+                    required
                   />
+                  {validationErrors.contactInfo && (
+                    <div className="invalid-feedback">{validationErrors.contactInfo}</div>
+                  )}
+                  <div className="form-text">Provide a 10-digit phone number or alternative email address</div>
+                </div>
+                
+                <div className="mb-3">
+                  <small className="text-muted">
+                    <span className="text-danger">*</span> All fields are mandatory
+                  </small>
                 </div>
                 
                 <button

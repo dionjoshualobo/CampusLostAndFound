@@ -1,48 +1,43 @@
-const mysql = require('mysql2/promise');
+const { Pool } = require('pg');
 
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Create tables if they don't exist
 const initDb = async () => {
-  let connection;
+  let client;
   try {
-    connection = await pool.getConnection();
+    client = await pool.connect();
     console.log('Connected to database successfully');
     
     // Create users table
-    await connection.execute(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         email VARCHAR(100) NOT NULL UNIQUE,
         passwordHash VARCHAR(255) NOT NULL,
-        userType ENUM('student', 'faculty') DEFAULT 'student',
+        userType VARCHAR(20) DEFAULT 'student' CHECK (userType IN ('student', 'faculty')),
         department VARCHAR(100),
-        semester INT,
+        semester INTEGER,
         contactInfo VARCHAR(255),
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
     // Create categories table
-    await connection.execute(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS categories (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         name VARCHAR(50) NOT NULL UNIQUE
       )
     `);
     
     // Insert default categories
-    await connection.execute(`
-      INSERT IGNORE INTO categories (name) VALUES 
+    await client.query(`
+      INSERT INTO categories (name) VALUES 
       ('Electronics'), 
       ('Clothing'), 
       ('Books'), 
@@ -51,20 +46,21 @@ const initDb = async () => {
       ('Bags'), 
       ('Documents'), 
       ('Other')
+      ON CONFLICT (name) DO NOTHING
     `);
     
     // Create items table with category and status
-    await connection.execute(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS items (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id SERIAL PRIMARY KEY,
         title VARCHAR(100) NOT NULL,
         description TEXT,
-        status ENUM('lost', 'found', 'claimed', 'resolved') NOT NULL,
+        status VARCHAR(20) NOT NULL CHECK (status IN ('lost', 'found', 'claimed', 'resolved')),
         location VARCHAR(255),
         dateLost DATE,
-        categoryId INT,
-        userId INT,
-        claimedBy INT,
+        categoryId INTEGER,
+        userId INTEGER,
+        claimedBy INTEGER,
         claimedAt TIMESTAMP NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
@@ -74,11 +70,11 @@ const initDb = async () => {
     `);
     
     // Create comments table
-    await connection.execute(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS comments (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        itemId INT NOT NULL,
-        userId INT NOT NULL,
+        id SERIAL PRIMARY KEY,
+        itemId INTEGER NOT NULL,
+        userId INTEGER NOT NULL,
         content TEXT NOT NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE CASCADE,
@@ -87,12 +83,12 @@ const initDb = async () => {
     `);
     
     // Create notifications table
-    await connection.execute(`
+    await client.query(`
       CREATE TABLE IF NOT EXISTS notifications (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        userId INT NOT NULL,
-        senderId INT NOT NULL,
-        itemId INT NOT NULL,
+        id SERIAL PRIMARY KEY,
+        userId INTEGER NOT NULL,
+        senderId INTEGER NOT NULL,
+        itemId INTEGER NOT NULL,
         message TEXT NOT NULL,
         isRead BOOLEAN DEFAULT false,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -107,7 +103,7 @@ const initDb = async () => {
     console.error('Database initialization error:', error);
     process.exit(1); // Exit if database initialization fails
   } finally {
-    if (connection) connection.release();
+    if (client) client.release();
   }
 };
 

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getItemComments, addComment, deleteComment } from '../api';
 import { formatDate } from '../utils/dateUtils';
+import { isProfileComplete } from '../utils/profileUtils';
+import ProfileCompletionModal from './ProfileCompletionModal';
 
 const CommentSection = ({ itemId, isAuthenticated }) => {
   const [comments, setComments] = useState([]);
@@ -8,6 +10,7 @@ const CommentSection = ({ itemId, isAuthenticated }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   
@@ -32,19 +35,27 @@ const CommentSection = ({ itemId, isAuthenticated }) => {
     
     if (!newComment.trim()) return;
     
+    // Check profile completion before submitting comment
+    if (!isProfileComplete(user)) {
+      setShowProfileModal(true);
+      return;
+    }
+    
     setIsSubmitting(true);
+    setError(null);
+    
     try {
       const response = await addComment({
         itemId,
-        content: newComment
+        content: newComment.trim()
       });
       
       setComments([response.data, ...comments]);
       setNewComment('');
-      setIsSubmitting(false);
     } catch (err) {
       console.error('Error adding comment:', err);
-      setError('Failed to add comment');
+      setError(err.response?.data?.message || 'Failed to add comment. Please try again.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -66,63 +77,74 @@ const CommentSection = ({ itemId, isAuthenticated }) => {
   if (isLoading) return <div>Loading comments...</div>;
   
   return (
-    <div className="comment-section mt-4">
-      <h4 className="mb-3">Comments</h4>
-      
-      {error && <div className="alert alert-danger">{error}</div>}
-      
-      {isAuthenticated && (
-        <form onSubmit={handleSubmit} className="mb-4">
-          <div className="mb-3">
-            <textarea
-              className="form-control"
-              rows="3"
-              placeholder="Add a comment..."
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              required
-            ></textarea>
-          </div>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Posting...' : 'Post Comment'}
-          </button>
-        </form>
-      )}
-      
-      {comments.length === 0 ? (
-        <div className="alert alert-info">No comments yet.</div>
-      ) : (
-        <div className="comment-list">
-          {comments.map(comment => (
-            <div key={comment.id} className="card mb-3">
-              <div className="card-body">
-                <div className="d-flex justify-content-between">
-                  <h6 className="card-subtitle mb-2 text-muted">
-                    {comment.userName}
-                  </h6>
-                  <small className="text-muted">
-                    {formatDate(comment.createdAt, true)}
-                  </small>
-                </div>
-                <p className="card-text">{comment.content}</p>
-                {user.id === comment.userId && (
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => handleDelete(comment.id)}
-                  >
-                    Delete
-                  </button>
-                )}
+    <>
+      <div className="card mt-4">
+        <div className="card-body">
+          <h4 className="card-title">Comments</h4>
+          
+          {error && <div className="alert alert-danger">{error}</div>}
+          
+          {isAuthenticated && (
+            <form onSubmit={handleSubmit} className="mb-4">
+              <div className="mb-3">
+                <textarea
+                  className="form-control"
+                  rows="3"
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  required
+                ></textarea>
               </div>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Posting...' : 'Post Comment'}
+              </button>
+            </form>
+          )}
+          
+          {comments.length === 0 ? (
+            <div className="alert alert-info">No comments yet.</div>
+          ) : (
+            <div className="comment-list">
+              {comments.map(comment => (
+                <div key={comment.id} className="card mb-3">
+                  <div className="card-body">
+                    <div className="d-flex justify-content-between">
+                      <h6 className="card-subtitle mb-2 text-muted">
+                        {comment.userName}
+                      </h6>
+                      <small className="text-muted">
+                        {formatDate(comment.createdAt, true)}
+                      </small>
+                    </div>
+                    <p className="card-text">{comment.content}</p>
+                    {user.id === comment.userId && (
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDelete(comment.id)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      )}
-    </div>
+      </div>
+      
+      <ProfileCompletionModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+        actionDescription="add a comment"
+      />
+    </>
   );
 };
 

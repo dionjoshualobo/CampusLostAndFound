@@ -15,9 +15,9 @@ router.post('/register', async (req, res) => {
     }
     
     // Check if user exists
-    const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     
-    if (rows.length > 0) {
+    if (result.rows.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
     }
     
@@ -26,12 +26,12 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
     
     // Insert user into database
-    const [result] = await db.execute(
-      'INSERT INTO users (name, email, passwordHash) VALUES (?, ?, ?)',
+    const insertResult = await db.query(
+      'INSERT INTO users (name, email, passwordHash) VALUES ($1, $2, $3) RETURNING id',
       [name, email, passwordHash]
     );
     
-    const userId = result.insertId;
+    const userId = insertResult.rows[0].id;
     
     // Create JWT token
     const token = jwt.sign(
@@ -64,16 +64,16 @@ router.post('/login', async (req, res) => {
     }
     
     // Check if user exists
-    const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
-    const user = rows[0];
+    const user = result.rows[0];
     
     // Validate password
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await bcrypt.compare(password, user.passwordhash);
     
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -103,13 +103,13 @@ router.post('/login', async (req, res) => {
 // Get user data
 router.get('/user', auth, async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT id, name, email FROM users WHERE id = ?', [req.user.id]);
+    const result = await db.query('SELECT id, name, email FROM users WHERE id = $1', [req.user.id]);
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    res.json(rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ message: 'Server error' });

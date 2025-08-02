@@ -1,6 +1,40 @@
-const validateItemReport = (req, res, next) => {
+const db = require('../config/db');
+
+const validateItemReport = async (req, res, next) => {
   const { title, description, status, location, dateLost, categoryId } = req.body;
   const missingFields = [];
+
+  // First check if user profile is complete
+  try {
+    const result = await db.query(
+      'SELECT name, userType, department, semester, contactInfo FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    if (result.rows.length > 0) {
+      const user = result.rows[0];
+      const profileErrors = [];
+      
+      if (!user.name || user.name.trim() === '') profileErrors.push('Name');
+      if (!user.usertype) profileErrors.push('User Type');
+      if (!user.department || user.department.trim() === '') profileErrors.push('Department');
+      if (!user.contactinfo || user.contactinfo.trim() === '') profileErrors.push('Contact Information');
+      if (user.usertype === 'student' && (!user.semester || user.semester === '')) {
+        profileErrors.push('Semester');
+      }
+      
+      if (profileErrors.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Profile completion required. Please complete your profile first.',
+          missingProfileFields: profileErrors,
+          requiresProfileCompletion: true
+        });
+      }
+    }
+  } catch (err) {
+    console.error('Error checking profile completion:', err);
+  }
 
   // Validate required fields
   if (!title || title.trim() === '') {

@@ -1,29 +1,27 @@
 require('dotenv').config({ path: '../.env' });
-const mysql = require('mysql2/promise');
+const { Client } = require('pg');
 
 async function checkConnection() {
-  const config = {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-  };
-
-  console.log('Attempting to connect with config:', {
-    host: config.host,
-    user: config.user,
-    database: config.database
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
   });
 
+  console.log('Attempting to connect to PostgreSQL database...');
+
   try {
-    const connection = await mysql.createConnection(config);
+    await client.connect();
     console.log('Connection successful!');
     
     // Check if tables exist
-    const [tables] = await connection.execute('SHOW TABLES');
-    console.log('Tables in database:', tables.map(t => Object.values(t)[0]));
+    const result = await client.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `);
+    console.log('Tables in database:', result.rows.map(t => t.table_name));
     
-    await connection.end();
+    await client.end();
   } catch (error) {
     console.error('Connection failed:', error);
   }

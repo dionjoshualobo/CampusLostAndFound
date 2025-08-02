@@ -7,7 +7,7 @@ const { validateItemReport } = require('../middleware/validation');
 // Get all items with category info
 router.get('/', async (req, res) => {
   try {
-    const result = await db.query(`
+    const [rows] = await db.execute(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
       LEFT JOIN users u ON i.userId = u.id 
@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
       ORDER BY i.createdAt DESC
     `);
     
-    res.json(result.rows);
+    res.json(rows);
   } catch (error) {
     console.error('Get items error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -26,14 +26,14 @@ router.get('/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     // Get counts by status
-    const result = await db.query(`
+    const [statusCounts] = await db.execute(`
       SELECT status, COUNT(*) as count 
       FROM items 
       GROUP BY status
     `);
     
     res.json({
-      statusCounts: result.rows
+      statusCounts
     });
   } catch (error) {
     console.error('Get stats error:', error);
@@ -44,19 +44,19 @@ router.get('/stats', async (req, res) => {
 // Get single item with category info
 router.get('/:id', async (req, res) => {
   try {
-    const result = await db.query(`
+    const [rows] = await db.execute(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
       LEFT JOIN users u ON i.userId = u.id 
       LEFT JOIN categories c ON i.categoryId = c.id
-      WHERE i.id = $1
+      WHERE i.id = ?
     `, [req.params.id]);
     
-    if (result.rows.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ message: 'Item not found' });
     }
     
-    res.json(result.rows[0]);
+    res.json(rows[0]);
   } catch (error) {
     console.error('Get item error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -68,20 +68,20 @@ router.post('/', auth, validateItemReport, async (req, res) => {
   try {
     const { title, description, status, location, dateLost, categoryId } = req.body;
     
-    const result = await db.query(
-      'INSERT INTO items (title, description, status, location, dateLost, categoryId, userId) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+    const [result] = await db.execute(
+      'INSERT INTO items (title, description, status, location, dateLost, categoryId, userId) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [title, description || null, status, location, dateLost, categoryId, req.user.id]
     );
     
-    const newItemResult = await db.query(`
+    const [newItem] = await db.execute(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
       LEFT JOIN users u ON i.userId = u.id 
       LEFT JOIN categories c ON i.categoryId = c.id
-      WHERE i.id = $1
-    `, [result.rows[0].id]);
+      WHERE i.id = ?
+    `, [result.insertId]);
     
-    res.status(201).json(newItemResult.rows[0]);
+    res.status(201).json(newItem[0]);
   } catch (error) {
     console.error('Create item error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -94,30 +94,30 @@ router.put('/:id', auth, async (req, res) => {
     const { title, description, status, location, dateLost, categoryId } = req.body;
     
     // Check if item exists and belongs to user
-    const result = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+    const [rows] = await db.execute('SELECT * FROM items WHERE id = ?', [req.params.id]);
     
-    if (result.rows.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ message: 'Item not found' });
     }
     
-    if (result.rows[0].userid !== req.user.id) {
+    if (rows[0].userId !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to update this item' });
     }
     
-    await db.query(
-      'UPDATE items SET title = $1, description = $2, status = $3, location = $4, dateLost = $5, categoryId = $6 WHERE id = $7',
+    await db.execute(
+      'UPDATE items SET title = ?, description = ?, status = ?, location = ?, dateLost = ?, categoryId = ? WHERE id = ?',
       [title, description, status, location, dateLost, categoryId, req.params.id]
     );
     
-    const updatedResult = await db.query(`
+    const [updatedItem] = await db.execute(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
       LEFT JOIN users u ON i.userId = u.id 
       LEFT JOIN categories c ON i.categoryId = c.id
-      WHERE i.id = $1
+      WHERE i.id = ?
     `, [req.params.id]);
     
-    res.json(updatedResult.rows[0]);
+    res.json(updatedItem[0]);
   } catch (error) {
     console.error('Update item error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -147,33 +147,33 @@ router.put('/:id/claim', auth, async (req, res) => {
     }
     
     // Check if item exists
-    const itemResult = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+    const [itemRows] = await db.execute('SELECT * FROM items WHERE id = ?', [req.params.id]);
     
-    if (itemResult.rows.length === 0) {
+    if (itemRows.length === 0) {
       return res.status(404).json({ message: 'Item not found' });
     }
     
-    const item = itemResult.rows[0];
+    const item = itemRows[0];
     
     // Get item owner information
-    const ownerResult = await db.query('SELECT id, name FROM users WHERE id = $1', [item.userid]);
+    const [ownerRows] = await db.execute('SELECT id, name FROM users WHERE id = ?', [item.userId]);
     
-    if (ownerResult.rows.length === 0) {
+    if (ownerRows.length === 0) {
       return res.status(404).json({ message: 'Item owner not found' });
     }
     
-    const owner = ownerResult.rows[0];
+    const owner = ownerRows[0];
     
     // For 'resolved' status, only the original reporter can resolve
-    if (newStatus === 'resolved' && item.userid !== req.user.id) {
+    if (newStatus === 'resolved' && item.userId !== req.user.id) {
       return res.status(403).json({ 
         message: 'Only the person who reported this item can mark it as resolved' 
       });
     }
     
     // Get current user's name for notifications
-    const userResult = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
-    const userName = userResult.rows.length > 0 ? userResult.rows[0].name : 'A user';
+    const [userRows] = await db.execute('SELECT name FROM users WHERE id = ?', [req.user.id]);
+    const userName = userRows.length > 0 ? userRows[0].name : 'A user';
     
     // For 'notify', just record the interest without changing item status
     if (newStatus === 'notify') {
@@ -187,18 +187,13 @@ router.put('/:id/claim', auth, async (req, res) => {
         }
         
         // Check if notifications table exists
-        const tableExists = await db.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = 'notifications'
-          );
-        `);
+        const [tableExists] = await db.execute(`SHOW TABLES LIKE 'notifications'`);
         
-        if (tableExists.rows[0].exists) {
+        if (tableExists.length > 0) {
           // Create notification
-          await db.query(
-            'INSERT INTO notifications (userId, senderId, itemId, message) VALUES ($1, $2, $3, $4)',
-            [item.userid, req.user.id, item.id, message]
+          await db.execute(
+            'INSERT INTO notifications (userId, senderId, itemId, message) VALUES (?, ?, ?, ?)',
+            [item.userId, req.user.id, item.id, message]
           );
           
           console.log('Notification created successfully');
@@ -207,8 +202,8 @@ router.put('/:id/claim', auth, async (req, res) => {
         }
         
         // Update item with claimedBy info but don't change status
-        await db.query(
-          'UPDATE items SET claimedBy = $1, claimedAt = NOW() WHERE id = $2',
+        await db.execute(
+          'UPDATE items SET claimedBy = ?, claimedAt = NOW() WHERE id = ?',
           [req.user.id, req.params.id]
         );
         
@@ -219,31 +214,31 @@ router.put('/:id/claim', auth, async (req, res) => {
       }
       
       // Get the updated item
-      const updatedResult = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+      const [updatedItem] = await db.execute('SELECT * FROM items WHERE id = ?', [req.params.id]);
       
       // Try to get additional data
-      let fullItemData = { ...updatedResult.rows[0], notificationSent: true };
+      let fullItemData = { ...updatedItem[0], notificationSent: true };
       
       try {
         // Get user name
-        const userData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].userid]);
-        if (userData.rows.length > 0) {
-          fullItemData.userName = userData.rows[0].name;
+        const [userData] = await db.execute('SELECT name FROM users WHERE id = ?', [updatedItem[0].userId]);
+        if (userData.length > 0) {
+          fullItemData.userName = userData[0].name;
         }
         
         // Get category name if applicable
-        if (updatedResult.rows[0].categoryid) {
-          const categoryData = await db.query('SELECT name FROM categories WHERE id = $1', [updatedResult.rows[0].categoryid]);
-          if (categoryData.rows.length > 0) {
-            fullItemData.categoryName = categoryData.rows[0].name;
+        if (updatedItem[0].categoryId) {
+          const [categoryData] = await db.execute('SELECT name FROM categories WHERE id = ?', [updatedItem[0].categoryId]);
+          if (categoryData.length > 0) {
+            fullItemData.categoryName = categoryData[0].name;
           }
         }
         
         // Get claimer name if applicable
-        if (updatedResult.rows[0].claimedby) {
-          const claimerData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].claimedby]);
-          if (claimerData.rows.length > 0) {
-            fullItemData.claimedByName = claimerData.rows[0].name;
+        if (updatedItem[0].claimedBy) {
+          const [claimerData] = await db.execute('SELECT name FROM users WHERE id = ?', [updatedItem[0].claimedBy]);
+          if (claimerData.length > 0) {
+            fullItemData.claimedByName = claimerData[0].name;
           }
         }
       } catch (err) {
@@ -257,39 +252,87 @@ router.put('/:id/claim', auth, async (req, res) => {
     // For 'resolved' status, update the item status
     console.log('Updating item to resolved status');
     try {
-      // PostgreSQL supports the resolved status natively since we defined it in the schema
-      await db.query(
-        'UPDATE items SET status = $1, claimedBy = $2, claimedAt = NOW() WHERE id = $3',
-        ['resolved', req.user.id, req.params.id]
+      // First try to get current valid ENUM values
+      const [statusColumn] = await db.execute(`SHOW COLUMNS FROM items LIKE 'status'`);
+      const enumType = statusColumn[0].Type;
+      console.log('Current status ENUM definition:', enumType);
+      
+      // Extract available values
+      const enumValues = enumType.match(/^enum\((.+)\)$/i)[1].split(',').map(value => 
+        value.replace(/'/g, '').trim().toLowerCase()
       );
+      console.log('Available status values:', enumValues);
+      
+      // Check if 'resolved' is a valid value
+      if (!enumValues.includes('resolved')) {
+        console.log('Status "resolved" not found in ENUM, attempting to update schema...');
+        
+        // Try to modify the column to include resolved
+        try {
+          await db.execute(`
+            ALTER TABLE items 
+            MODIFY COLUMN status ENUM('lost', 'found', 'claimed', 'resolved') NOT NULL
+          `);
+          console.log('Successfully updated status ENUM to include "resolved"');
+          
+          // Now try the update with 'resolved'
+          await db.execute(
+            'UPDATE items SET status = ?, claimedBy = ?, claimedAt = NOW() WHERE id = ?',
+            ['resolved', req.user.id, req.params.id]
+          );
+        } catch (schemaError) {
+          console.error('Failed to update schema, falling back to "claimed"', schemaError);
+          
+          // Fall back to using 'claimed' instead
+          await db.execute(
+            'UPDATE items SET status = ?, claimedBy = ?, claimedAt = NOW() WHERE id = ?',
+            ['claimed', req.user.id, req.params.id]
+          );
+        }
+      } else {
+        // 'resolved' is available, so use it
+        await db.execute(
+          'UPDATE items SET status = ?, claimedBy = ?, claimedAt = NOW() WHERE id = ?',
+          ['resolved', req.user.id, req.params.id]
+        );
+      }
     } catch (err) {
       console.error('Error during status update:', err);
       
-      // Fall back to using 'claimed' instead
-      await db.query(
-        'UPDATE items SET status = $1, claimedBy = $2, claimedAt = NOW() WHERE id = $3',
-        ['claimed', req.user.id, req.params.id]
-      );
+      // If we get a truncation error, try with 'claimed' instead
+      if (err.code === 'WARN_DATA_TRUNCATED') {
+        console.log('Falling back to "claimed" status due to truncation error');
+        await db.execute(
+          'UPDATE items SET status = ?, claimedBy = ?, claimedAt = NOW() WHERE id = ?',
+          ['claimed', req.user.id, req.params.id]
+        );
+      } else {
+        // For other errors, just update claimedBy without changing status
+        await db.execute(
+          'UPDATE items SET claimedBy = ?, claimedAt = NOW() WHERE id = ?',
+          [req.user.id, req.params.id]
+        );
+      }
     }
     
     // Get the updated item
-    const updatedResult = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+    const [updatedItem] = await db.execute('SELECT * FROM items WHERE id = ?', [req.params.id]);
     
     // Try to get additional data
-    let fullItemData = { ...updatedResult.rows[0] };
+    let fullItemData = { ...updatedItem[0] };
     
     try {
       // Get user name
-      const userData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].userid]);
-      if (userData.rows.length > 0) {
-        fullItemData.userName = userData.rows[0].name;
+      const [userData] = await db.execute('SELECT name FROM users WHERE id = ?', [updatedItem[0].userId]);
+      if (userData.length > 0) {
+        fullItemData.userName = userData[0].name;
       }
       
       // Get category name if applicable
-      if (updatedResult.rows[0].categoryid) {
-        const categoryData = await db.query('SELECT name FROM categories WHERE id = $1', [updatedResult.rows[0].categoryid]);
-        if (categoryData.rows.length > 0) {
-          fullItemData.categoryName = categoryData.rows[0].name;
+      if (updatedItem[0].categoryId) {
+        const [categoryData] = await db.execute('SELECT name FROM categories WHERE id = ?', [updatedItem[0].categoryId]);
+        if (categoryData.length > 0) {
+          fullItemData.categoryName = categoryData[0].name;
         }
       }
     } catch (err) {
@@ -312,17 +355,17 @@ router.put('/:id/claim', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     // Check if item exists and belongs to user
-    const result = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+    const [rows] = await db.execute('SELECT * FROM items WHERE id = ?', [req.params.id]);
     
-    if (result.rows.length === 0) {
+    if (rows.length === 0) {
       return res.status(404).json({ message: 'Item not found' });
     }
     
-    if (result.rows[0].userid !== req.user.id) {
+    if (rows[0].userId !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to delete this item' });
     }
     
-    await db.query('DELETE FROM items WHERE id = $1', [req.params.id]);
+    await db.execute('DELETE FROM items WHERE id = ?', [req.params.id]);
     
     res.json({ message: 'Item removed' });
   } catch (error) {
@@ -330,5 +373,7 @@ router.delete('/:id', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+
 
 module.exports = router;

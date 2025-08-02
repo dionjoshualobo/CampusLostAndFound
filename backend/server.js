@@ -26,10 +26,10 @@ app.use((err, req, res, next) => {
 });
 
 // Test database connection
-db.getConnection()
-  .then(connection => {
+db.connect()
+  .then(client => {
     console.log('Database connected successfully');
-    connection.release();
+    client.release();
     
     // Routes
     app.use('/api/auth', authRoutes);

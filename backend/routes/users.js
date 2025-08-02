@@ -4,33 +4,67 @@ const db = require('../config/db');
 const auth = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 
+// Validation middleware for profile completion
+const validateProfileCompletion = (userData) => {
+  const errors = [];
+  
+  if (!userData.name || userData.name.trim() === '') {
+    errors.push('Name is required');
+  }
+  
+  if (!userData.userType || !['student', 'faculty'].includes(userData.userType)) {
+    errors.push('Valid user type is required');
+  }
+  
+  if (!userData.department || userData.department.trim() === '') {
+    errors.push('Department is required');
+  }
+  
+  if (!userData.contactInfo || userData.contactInfo.trim() === '') {
+    errors.push('Contact information is required');
+  } else {
+    // Validate contact info format
+    const phoneRegex = /^\d{10}$/;
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!phoneRegex.test(userData.contactInfo) && !emailRegex.test(userData.contactInfo)) {
+      errors.push('Contact information must be a valid 10-digit phone number or email address');
+    }
+  }
+  
+  if (userData.userType === 'student' && (!userData.semester || userData.semester === '')) {
+    errors.push('Semester is required for students');
+  }
+  
+  return errors;
+};
+
 // Get user profile
 router.get('/profile', auth, async (req, res) => {
   try {
-    const [rows] = await db.execute(
-      'SELECT id, name, email, userType, department, semester, contactInfo, createdAt FROM users WHERE id = ?', 
+    const result = await db.query(
+      'SELECT id, name, email, userType, department, semester, contactInfo, createdAt FROM users WHERE id = $1', 
       [req.user.id]
     );
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Log to verify email is included in the response
-    console.log('Fetched user profile, email included:', !!rows[0].email);
+    console.log('Fetched user profile, email included:', !!result.rows[0].email);
     
     // Get user's items
-    const [items] = await db.execute(`
+    const itemsResult = await db.query(`
       SELECT i.*, c.name as categoryName
       FROM items i
       LEFT JOIN categories c ON i.categoryId = c.id
-      WHERE i.userId = ?
+      WHERE i.userId = $1
       ORDER BY i.createdAt DESC
     `, [req.user.id]);
     
     res.json({
-      user: rows[0],
-      items
+      user: result.rows[0],
+      items: itemsResult.rows
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -43,103 +77,114 @@ router.put('/profile', auth, async (req, res) => {
   try {
     const { name, userType, department, semester, contactInfo } = req.body;
     
+    // Validate all required fields
+    const validationErrors = validateProfileCompletion({
+      name,
+      userType,
+      department,
+      semester,
+      contactInfo
+    });
+    
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        message: 'Profile validation failed',
+        errors: validationErrors
+      });
+    }
+    
     // Debug logging
     console.log('Profile update received:', { name, userType, department, semester, contactInfo });
     
     // Check if user exists
-    const [userExists] = await db.execute('SELECT id FROM users WHERE id = ?', [req.user.id]);
+    const userResult = await db.query('SELECT id FROM users WHERE id = $1', [req.user.id]);
     
-    if (userExists.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Get existing user data to use as defaults
-    const [existingUser] = await db.execute(
-      'SELECT name, userType, department, semester, contactInfo FROM users WHERE id = ?',
-      [req.user.id]
-    );
-    
-    // Use existing values as defaults
-    const updatedName = name || existingUser[0].name;
-    let updatedUserType = userType;
-    
-    // Only allow 'student' or 'faculty' for userType
-    if (updatedUserType !== 'student' && updatedUserType !== 'faculty') {
-      updatedUserType = existingUser[0].userType || 'student';
     }
     
     // Clean and parse the semester value
     let parsedSemester = null;
-    if (semester !== null && semester !== undefined && semester !== '') {
-      if (typeof semester === 'number') {
-        parsedSemester = semester;
-      } else {
-        try {
-          parsedSemester = parseInt(semester, 10);
-          if (isNaN(parsedSemester)) parsedSemester = null;
-        } catch (err) {
-          parsedSemester = null;
+    if (userType === 'student') {
+      if (semester !== null && semester !== undefined && semester !== '') {
+        if (typeof semester === 'number') {
+          parsedSemester = semester;
+        } else {
+          try {
+            parsedSemester = parseInt(semester, 10);
+            if (isNaN(parsedSemester)) {
+              return res.status(400).json({ message: 'Invalid semester value' });
+            }
+          } catch (err) {
+            return res.status(400).json({ message: 'Invalid semester value' });
+          }
         }
+      } else {
+        return res.status(400).json({ message: 'Semester is required for students' });
       }
     }
     
     // Build the SQL dynamically based on available columns
-    const updateFields = ['name = ?'];
-    const updateValues = [updatedName];
+    const updateFields = ['name = $1'];
+    const updateValues = [name.trim()];
     
     // Only include fields we've confirmed exist
     try {
-      const [columns] = await db.execute('SHOW COLUMNS FROM users');
-      const columnNames = columns.map(col => col.Field);
+      const result = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users'
+      `);
+      const columnNames = result.rows.map(col => col.column_name);
       
-      if (columnNames.includes('userType')) {
-        updateFields.push('userType = ?');
-        updateValues.push(updatedUserType);
+      if (columnNames.includes('usertype')) {
+        updateFields.push('userType = $' + (updateValues.length + 1));
+        updateValues.push(userType);
       }
       
       if (columnNames.includes('department')) {
-        updateFields.push('department = ?');
-        updateValues.push(department || null);
+        updateFields.push('department = $' + (updateValues.length + 1));
+        updateValues.push(department.trim());
       }
       
       if (columnNames.includes('semester')) {
-        updateFields.push('semester = ?');
+        updateFields.push('semester = $' + (updateValues.length + 1));
         updateValues.push(parsedSemester);
       }
       
-      if (columnNames.includes('contactInfo')) {
-        updateFields.push('contactInfo = ?');
-        updateValues.push(contactInfo || null);
+      if (columnNames.includes('contactinfo')) {
+        updateFields.push('contactInfo = $' + (updateValues.length + 1));
+        updateValues.push(contactInfo.trim());
       }
     } catch (err) {
       console.error('Error checking columns:', err);
-      // Continue with basic fields only
+      return res.status(500).json({ message: 'Database error' });
     }
     
     // Add user ID for the WHERE clause
     updateValues.push(req.user.id);
     
     // Execute the update with available fields
-    const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+    const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${updateValues.length}`;
     console.log('Executing SQL:', sql, updateValues);
-    await db.execute(sql, updateValues);
+    await db.query(sql, updateValues);
     
     // Get updated user data
-    const [rows] = await db.execute(
-      'SELECT id, name, email FROM users WHERE id = ?', 
+    const result = await db.query(
+      'SELECT id, name, email FROM users WHERE id = $1', 
       [req.user.id]
     );
     
     // Try to get extended fields
-    let userData = { ...rows[0] };
+    let userData = { ...result.rows[0] };
     try {
-      const [extraData] = await db.execute(
-        'SELECT userType, department, semester, contactInfo FROM users WHERE id = ?',
+      const extraResult = await db.query(
+        'SELECT userType, department, semester, contactInfo FROM users WHERE id = $1',
         [req.user.id]
       );
       
-      if (extraData.length > 0) {
-        userData = { ...userData, ...extraData[0] };
+      if (extraResult.rows.length > 0) {
+        userData = { ...userData, ...extraResult.rows[0] };
       }
     } catch (err) {
       console.log('Could not retrieve extended user data:', err.message);
@@ -165,14 +210,14 @@ router.put('/password', auth, async (req, res) => {
     }
     
     // Get user with password
-    const [rows] = await db.execute('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Validate current password
-    const isMatch = await bcrypt.compare(currentPassword, rows[0].passwordHash);
+    const isMatch = await bcrypt.compare(currentPassword, result.rows[0].passwordhash);
     if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
@@ -182,8 +227,8 @@ router.put('/password', auth, async (req, res) => {
     const passwordHash = await bcrypt.hash(newPassword, salt);
     
     // Update password
-    await db.execute(
-      'UPDATE users SET passwordHash = ? WHERE id = ?',
+    await db.query(
+      'UPDATE users SET passwordHash = $1 WHERE id = $2',
       [passwordHash, req.user.id]
     );
     
@@ -200,39 +245,41 @@ router.get('/contact/:id', auth, async (req, res) => {
     const userId = req.params.id;
     
     // First get only the core columns we know exist
-    const [rows] = await db.execute(`
+    const result = await db.query(`
       SELECT id, name, email, contactInfo
-      FROM users WHERE id = ?
+      FROM users WHERE id = $1
     `, [userId]);
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Try to get extended columns conditionally
     let userInfo = {
-      id: rows[0].id,
-      name: rows[0].name,
-      email: rows[0].email,
-      contactInfo: rows[0].contactInfo || 'Not provided'
+      id: result.rows[0].id,
+      name: result.rows[0].name,
+      email: result.rows[0].email,
+      contactinfo: result.rows[0].contactinfo || 'Not provided'
     };
     
     // Try to get additional columns if they exist
     try {
-      const [extendedRows] = await db.execute(`
-        SHOW COLUMNS FROM users WHERE Field IN ('userType', 'department', 'semester')
+      const columnsResult = await db.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name IN ('usertype', 'department', 'semester')
       `);
       
-      const existingColumns = extendedRows.map(row => row.Field);
+      const existingColumns = columnsResult.rows.map(row => row.column_name);
       
       if (existingColumns.length > 0) {
         const columnsString = existingColumns.join(', ');
-        const [extendedInfo] = await db.execute(`
-          SELECT ${columnsString} FROM users WHERE id = ?
+        const extendedResult = await db.query(`
+          SELECT ${columnsString} FROM users WHERE id = $1
         `, [userId]);
         
-        if (extendedInfo.length > 0) {
-          userInfo = { ...userInfo, ...extendedInfo[0] };
+        if (extendedResult.rows.length > 0) {
+          userInfo = { ...userInfo, ...extendedResult.rows[0] };
         }
       }
     } catch (err) {
