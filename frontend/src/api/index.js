@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { supabase } from '../config/supabase';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -13,7 +14,7 @@ const api = axios.create({
 // Add auth token to requests
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -24,15 +25,39 @@ api.interceptors.request.use(
   }
 );
 
-// Authentication APIs
+// Authentication APIs - Updated for Supabase
 export const register = (userData) => api.post('/auth/register', userData);
 export const login = (credentials) => api.post('/auth/login', credentials);
+export const logout = () => api.post('/auth/logout');
+export const refreshToken = (refresh_token) => api.post('/auth/refresh', { refresh_token });
 export const getUserData = () => api.get('/auth/user');
 
 // User Profile APIs
 export const getUserProfile = () => api.get('/users/profile');
 export const updateUserProfile = (profileData) => api.put('/users/profile', profileData);
-export const changePassword = (passwordData) => api.put('/users/password', passwordData);
+export const changePassword = async (passwordData) => {
+  try {
+    // Get the current user session
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      throw new Error('Not authenticated with Supabase. Please log out and log back in.');
+    }
+    
+    // Update the password using Supabase Auth
+    const { error } = await supabase.auth.updateUser({
+      password: passwordData.newPassword
+    });
+    
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    return { success: true, message: 'Password updated successfully' };
+  } catch (error) {
+    throw new Error(error.message || 'Failed to update password');
+  }
+};
 export const getUserContact = (userId) => api.get(`/users/contact/${userId}`);
 
 // Items APIs

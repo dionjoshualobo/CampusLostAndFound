@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const auth = require('../middleware/auth');
+const auth = require('../middleware/supabase-auth');
 
 // Get comments for an item
 router.get('/item/:itemId', async (req, res) => {
@@ -9,7 +9,7 @@ router.get('/item/:itemId', async (req, res) => {
     const result = await db.query(`
       SELECT c.*, u.name as userName 
       FROM comments c
-      JOIN users u ON c.userId = u.id
+      JOIN user_profiles u ON c.userId = u.id
       WHERE c.itemId = $1
       ORDER BY c.createdAt DESC
     `, [req.params.itemId]);
@@ -46,7 +46,7 @@ router.post('/', auth, async (req, res) => {
     const commentResult = await db.query(`
       SELECT c.*, u.name as userName 
       FROM comments c
-      JOIN users u ON c.userId = u.id
+      JOIN user_profiles u ON c.userId = u.id
       WHERE c.id = $1
     `, [insertResult.rows[0].id]);
     

@@ -7,7 +7,7 @@ const validateItemReport = async (req, res, next) => {
   // First check if user profile is complete
   try {
     const result = await db.query(
-      'SELECT name, userType, department, semester, contactInfo FROM users WHERE id = $1',
+      'SELECT name, userType, department, semester, contactInfo FROM user_profiles WHERE id = $1',
       [req.user.id]
     );
     

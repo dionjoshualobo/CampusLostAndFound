@@ -12,18 +12,17 @@ const initDb = async () => {
     client = await pool.connect();
     console.log('Connected to database successfully');
     
-    // Create users table
+    // Create user_profiles table with quoted identifiers to preserve case
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(100) NOT NULL UNIQUE,
-        passwordHash VARCHAR(255) NOT NULL,
-        userType VARCHAR(20) DEFAULT 'student' CHECK (userType IN ('student', 'faculty')),
+      CREATE TABLE IF NOT EXISTS user_profiles (
+        id UUID PRIMARY KEY,
+        name VARCHAR(100),
+        email VARCHAR(100),
+        "userType" VARCHAR(20) DEFAULT 'student' CHECK ("userType" IN ('student', 'faculty')),
         department VARCHAR(100),
         semester INTEGER,
-        contactInfo VARCHAR(255),
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        "contactInfo" VARCHAR(255),
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
@@ -59,13 +58,11 @@ const initDb = async () => {
         location VARCHAR(255),
         dateLost DATE,
         categoryId INTEGER,
-        userId INTEGER,
-        claimedBy INTEGER,
+        userId UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
+        claimedBy UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
         claimedAt TIMESTAMP NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL,
-        FOREIGN KEY (claimedBy) REFERENCES users(id) ON DELETE SET NULL
+        FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL
       )
     `);
     
@@ -74,11 +71,10 @@ const initDb = async () => {
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
         itemId INTEGER NOT NULL,
-        userId INTEGER NOT NULL,
+        userId UUID NOT NULL REFERENCES user_profiles(id),
         content TEXT NOT NULL,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE CASCADE,
-        FOREIGN KEY (userId) REFERENCES users(id)
+        FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE CASCADE
       )
     `);
     
@@ -86,14 +82,12 @@ const initDb = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
-        userId INTEGER NOT NULL,
-        senderId INTEGER NOT NULL,
+        userId UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
+        senderId UUID NOT NULL REFERENCES user_profiles(id) ON DELETE CASCADE,
         itemId INTEGER NOT NULL,
         message TEXT NOT NULL,
         isRead BOOLEAN DEFAULT false,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE CASCADE
       )
     `);

@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const authRoutes = require('./routes/auth');
+const supabaseAuthRoutes = require('./routes/supabase-auth');
 const itemRoutes = require('./routes/items');
 const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
@@ -32,7 +32,7 @@ db.connect()
     client.release();
     
     // Routes
-    app.use('/api/auth', authRoutes);
+    app.use('/api/auth', supabaseAuthRoutes);
     app.use('/api/items', itemRoutes);
     app.use('/api/users', userRoutes);
     app.use('/api/categories', categoryRoutes);

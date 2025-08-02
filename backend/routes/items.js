@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const auth = require('../middleware/auth');
+const auth = require('../middleware/supabase-auth');
 const { validateItemReport } = require('../middleware/validation');
 
 // Get all items with category info
@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
     const result = await db.query(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
+      LEFT JOIN user_profiles u ON i.userId = u.id 
       LEFT JOIN categories c ON i.categoryId = c.id
       ORDER BY i.createdAt DESC
     `);
@@ -47,7 +47,7 @@ router.get('/:id', async (req, res) => {
     const result = await db.query(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
+      LEFT JOIN user_profiles u ON i.userId = u.id 
       LEFT JOIN categories c ON i.categoryId = c.id
       WHERE i.id = $1
     `, [req.params.id]);
@@ -76,7 +76,7 @@ router.post('/', auth, validateItemReport, async (req, res) => {
     const newItemResult = await db.query(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
+      LEFT JOIN user_profiles u ON i.userId = u.id 
       LEFT JOIN categories c ON i.categoryId = c.id
       WHERE i.id = $1
     `, [result.rows[0].id]);
@@ -112,7 +112,7 @@ router.put('/:id', auth, async (req, res) => {
     const updatedResult = await db.query(`
       SELECT i.*, u.name as userName, c.name as categoryName 
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
+      LEFT JOIN user_profiles u ON i.userId = u.id 
       LEFT JOIN categories c ON i.categoryId = c.id
       WHERE i.id = $1
     `, [req.params.id]);
@@ -156,7 +156,7 @@ router.put('/:id/claim', auth, async (req, res) => {
     const item = itemResult.rows[0];
     
     // Get item owner information
-    const ownerResult = await db.query('SELECT id, name FROM users WHERE id = $1', [item.userid]);
+    const ownerResult = await db.query('SELECT id, name FROM user_profiles WHERE id = $1', [item.userid]);
     
     if (ownerResult.rows.length === 0) {
       return res.status(404).json({ message: 'Item owner not found' });
@@ -172,7 +172,7 @@ router.put('/:id/claim', auth, async (req, res) => {
     }
     
     // Get current user's name for notifications
-    const userResult = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
+    const userResult = await db.query('SELECT name FROM user_profiles WHERE id = $1', [req.user.id]);
     const userName = userResult.rows.length > 0 ? userResult.rows[0].name : 'A user';
     
     // For 'notify', just record the interest without changing item status
@@ -226,7 +226,7 @@ router.put('/:id/claim', auth, async (req, res) => {
       
       try {
         // Get user name
-        const userData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].userid]);
+        const userData = await db.query('SELECT name FROM user_profiles WHERE id = $1', [updatedResult.rows[0].userid]);
         if (userData.rows.length > 0) {
           fullItemData.userName = userData.rows[0].name;
         }
@@ -241,7 +241,7 @@ router.put('/:id/claim', auth, async (req, res) => {
         
         // Get claimer name if applicable
         if (updatedResult.rows[0].claimedby) {
-          const claimerData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].claimedby]);
+          const claimerData = await db.query('SELECT name FROM user_profiles WHERE id = $1', [updatedResult.rows[0].claimedby]);
           if (claimerData.rows.length > 0) {
             fullItemData.claimedByName = claimerData.rows[0].name;
           }
@@ -280,7 +280,7 @@ router.put('/:id/claim', auth, async (req, res) => {
     
     try {
       // Get user name
-      const userData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].userid]);
+      const userData = await db.query('SELECT name FROM user_profiles WHERE id = $1', [updatedResult.rows[0].userid]);
       if (userData.rows.length > 0) {
         fullItemData.userName = userData.rows[0].name;
       }

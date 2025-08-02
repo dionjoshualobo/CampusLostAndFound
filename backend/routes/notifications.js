@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/db');
-const auth = require('../middleware/auth');
+const auth = require('../middleware/supabase-auth');
 
 // Get all notifications for the current user
 router.get('/', auth, async (req, res) => {
@@ -9,7 +9,7 @@ router.get('/', auth, async (req, res) => {
     const result = await db.query(`
       SELECT n.*, u.name as senderName, i.title as itemTitle, i.id as itemId 
       FROM notifications n
-      JOIN users u ON n.senderId = u.id
+      JOIN user_profiles u ON n.senderId = u.id
       JOIN items i ON n.itemId = i.id
       WHERE n.userId = $1
       ORDER BY n.createdAt DESC
