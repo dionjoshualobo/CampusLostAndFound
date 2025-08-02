@@ -115,12 +115,20 @@ cd frontend
 npm install
 ```
 
-3. Start the React development server:
+**If you encounter dependency resolution errors:**
 ```bash
-npm start
+# Clear npm cache and reinstall
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
 ```
 
-The frontend application will run on `http://localhost:3000`
+3. Start the React development server:
+```bash
+npm run dev
+```
+
+The frontend application will run on `http://localhost:5173`
 
 ## Database Schema
 

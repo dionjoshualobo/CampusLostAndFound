@@ -473,6 +473,7 @@ a:hover {
   border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1rem;
+  color: #721c24;
 }
 
 .item-status-found {
@@ -481,6 +482,7 @@ a:hover {
   border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1rem;
+  color: #084298;
 }
 
 .item-status-claimed {
@@ -489,6 +491,7 @@ a:hover {
   border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1rem;
+  color: #664d03;
 }
 
 .item-status-resolved {
@@ -497,26 +500,52 @@ a:hover {
   border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1rem;
+  color: #0f5132;
 }
 
 [data-theme="dark"] .item-status-lost {
-  background: linear-gradient(135deg, rgba(248, 215, 218, 0.1), rgba(248, 215, 218, 0.05));
+  background: linear-gradient(135deg, rgba(220, 53, 69, 0.15), rgba(220, 53, 69, 0.1));
   border-left-color: var(--danger-color);
+  color: var(--text-primary);
 }
 
 [data-theme="dark"] .item-status-found {
-  background: linear-gradient(135deg, rgba(207, 226, 255, 0.1), rgba(207, 226, 255, 0.05));
+  background: linear-gradient(135deg, rgba(13, 110, 253, 0.15), rgba(13, 110, 253, 0.1));
   border-left-color: var(--btn-primary);
+  color: var(--text-primary);
 }
 
 [data-theme="dark"] .item-status-claimed {
-  background: linear-gradient(135deg, rgba(255, 243, 205, 0.1), rgba(255, 243, 205, 0.05));
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15), rgba(255, 193, 7, 0.1));
   border-left-color: var(--warning-color);
+  color: var(--text-primary);
 }
 
 [data-theme="dark"] .item-status-resolved {
-  background: linear-gradient(135deg, rgba(209, 231, 221, 0.1), rgba(209, 231, 221, 0.05));
+  background: linear-gradient(135deg, rgba(25, 135, 84, 0.15), rgba(25, 135, 84, 0.1));
   border-left-color: var(--success-color);
+  color: var(--text-primary);
+}
+
+/* Ensure all card text elements are visible in dark mode */
+[data-theme="dark"] .card-title {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .card-text {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .card-subtitle {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .text-muted {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .small {
+  color: var(--text-secondary) !important;
 }
 
 /* Responsive adjustments */
