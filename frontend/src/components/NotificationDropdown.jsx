@@ -88,10 +88,11 @@ const NotificationDropdown = () => {
 
   return (
     <>
-      <div className="dropdown" ref={dropdownRef}>
+      <div className={`dropdown${isOpen ? ' show' : ''}`} ref={dropdownRef}>
         <button
           className="btn btn-link nav-link position-relative"
           onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
         >
           <i className="bi bi-bell"></i>
           {unreadCount > 0 && (
@@ -101,7 +102,10 @@ const NotificationDropdown = () => {
           )}
         </button>
 
-        <div className={`dropdown-menu dropdown-menu-end${isOpen ? ' show' : ''}`} style={{ minWidth: '300px' }}>
+        <div 
+          className={`dropdown-menu dropdown-menu-end${isOpen ? ' show' : ''}`} 
+          style={{ minWidth: '350px', maxHeight: '400px', overflowY: 'auto' }}
+        >
           <h6 className="dropdown-header">Notifications</h6>
 
           {isLoading ? (

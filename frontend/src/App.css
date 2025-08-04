@@ -400,6 +400,7 @@ a:hover {
   border-color: var(--border-color);
   border-radius: 0.75rem;
   box-shadow: var(--shadow);
+  z-index: 1050;
 }
 
 .dropdown-item {
@@ -411,6 +412,11 @@ a:hover {
 .dropdown-item:hover {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+/* Ensure notification dropdown is visible */
+.dropdown.show .dropdown-menu {
+  display: block;
 }
 
 /* Custom animations */
