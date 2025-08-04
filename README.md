@@ -1,5 +1,4 @@
 # Campus Lost and Found
-# feature/
 A web application for managing lost and found items on campus. Students can report lost items, post found items, and connect with each other to recover lost belongings.
 
 ## Features
