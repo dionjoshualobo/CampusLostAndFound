@@ -18,12 +18,12 @@ const initDb = async () => {
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         email VARCHAR(100) NOT NULL UNIQUE,
-        passwordHash VARCHAR(255) NOT NULL,
-        userType VARCHAR(20) DEFAULT 'student' CHECK (userType IN ('student', 'faculty')),
+        passwordhash VARCHAR(255) NOT NULL,
+        usertype VARCHAR(20) DEFAULT 'student' CHECK (usertype IN ('student', 'faculty')),
         department VARCHAR(100),
         semester INTEGER,
-        contactInfo VARCHAR(255),
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        contactinfo VARCHAR(255),
+        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     
@@ -57,15 +57,15 @@ const initDb = async () => {
         description TEXT,
         status VARCHAR(20) NOT NULL CHECK (status IN ('lost', 'found', 'claimed', 'resolved')),
         location VARCHAR(255),
-        dateLost DATE,
-        categoryId INTEGER,
-        userId INTEGER,
-        claimedBy INTEGER,
-        claimedAt TIMESTAMP NULL,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL,
-        FOREIGN KEY (claimedBy) REFERENCES users(id) ON DELETE SET NULL
+        datelost DATE,
+        categoryid INTEGER,
+        userid INTEGER,
+        claimedby INTEGER,
+        claimedat TIMESTAMP NULL,
+        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userid) REFERENCES users(id) ON DELETE SET NULL,
+        FOREIGN KEY (categoryid) REFERENCES categories(id) ON DELETE SET NULL,
+        FOREIGN KEY (claimedby) REFERENCES users(id) ON DELETE SET NULL
       )
     `);
     
@@ -73,12 +73,12 @@ const initDb = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
-        itemId INTEGER NOT NULL,
-        userId INTEGER NOT NULL,
+        itemid INTEGER NOT NULL,
+        userid INTEGER NOT NULL,
         content TEXT NOT NULL,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE CASCADE,
-        FOREIGN KEY (userId) REFERENCES users(id)
+        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (itemid) REFERENCES items(id) ON DELETE CASCADE,
+        FOREIGN KEY (userid) REFERENCES users(id)
       )
     `);
     
@@ -86,15 +86,15 @@ const initDb = async () => {
     await client.query(`
       CREATE TABLE IF NOT EXISTS notifications (
         id SERIAL PRIMARY KEY,
-        userId INTEGER NOT NULL,
-        senderId INTEGER NOT NULL,
-        itemId INTEGER NOT NULL,
+        userid INTEGER NOT NULL,
+        senderid INTEGER NOT NULL,
+        itemid INTEGER NOT NULL,
         message TEXT NOT NULL,
-        isRead BOOLEAN DEFAULT false,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (itemId) REFERENCES items(id) ON DELETE CASCADE
+        isread BOOLEAN DEFAULT false,
+        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (senderid) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (itemid) REFERENCES items(id) ON DELETE CASCADE
       )
     `);
     

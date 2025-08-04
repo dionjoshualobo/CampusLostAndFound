@@ -7,11 +7,17 @@ const auth = require('../middleware/auth');
 router.get('/item/:itemId', async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT c.*, u.name as userName 
+      SELECT 
+        c.id,
+        c.itemid as "itemId",
+        c.userid as "userId",
+        c.content,
+        c.createdat as "createdAt",
+        u.name as "userName" 
       FROM comments c
-      JOIN users u ON c.userId = u.id
-      WHERE c.itemId = $1
-      ORDER BY c.createdAt DESC
+      JOIN users u ON c.userid = u.id
+      WHERE c.itemid = $1
+      ORDER BY c.createdat DESC
     `, [req.params.itemId]);
     
     res.json(result.rows);
@@ -38,15 +44,21 @@ router.post('/', auth, async (req, res) => {
     
     // Insert comment
     const insertResult = await db.query(
-      'INSERT INTO comments (itemId, userId, content) VALUES ($1, $2, $3) RETURNING id',
+      'INSERT INTO comments (itemid, userid, content) VALUES ($1, $2, $3) RETURNING id',
       [itemId, req.user.id, content]
     );
     
     // Get the new comment with user info
     const commentResult = await db.query(`
-      SELECT c.*, u.name as userName 
+      SELECT 
+        c.id,
+        c.itemid as "itemId",
+        c.userid as "userId",
+        c.content,
+        c.createdat as "createdAt",
+        u.name as "userName" 
       FROM comments c
-      JOIN users u ON c.userId = u.id
+      JOIN users u ON c.userid = u.id
       WHERE c.id = $1
     `, [insertResult.rows[0].id]);
     

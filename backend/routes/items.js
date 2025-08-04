@@ -8,11 +8,26 @@ const { validateItemReport } = require('../middleware/validation');
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT i.*, u.name as userName, c.name as categoryName 
+      SELECT 
+        i.id,
+        i.title,
+        i.description,
+        i.status,
+        i.location,
+        i.datelost as "dateLost",
+        i.categoryid as "categoryId",
+        i.userid as "userId",
+        i.claimedby as "claimedBy",
+        i.claimedat as "claimedAt",
+        i.createdat as "createdAt",
+        u.name as "userName", 
+        c.name as "categoryName",
+        claimer.name as "claimedByName"
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
-      LEFT JOIN categories c ON i.categoryId = c.id
-      ORDER BY i.createdAt DESC
+      LEFT JOIN users u ON i.userid = u.id 
+      LEFT JOIN categories c ON i.categoryid = c.id
+      LEFT JOIN users claimer ON i.claimedby = claimer.id
+      ORDER BY i.createdat DESC
     `);
     
     res.json(result.rows);
@@ -45,10 +60,25 @@ router.get('/stats', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT i.*, u.name as userName, c.name as categoryName 
+      SELECT 
+        i.id,
+        i.title,
+        i.description,
+        i.status,
+        i.location,
+        i.datelost as "dateLost",
+        i.categoryid as "categoryId",
+        i.userid as "userId",
+        i.claimedby as "claimedBy",
+        i.claimedat as "claimedAt",
+        i.createdat as "createdAt",
+        u.name as "userName", 
+        c.name as "categoryName",
+        claimer.name as "claimedByName"
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
-      LEFT JOIN categories c ON i.categoryId = c.id
+      LEFT JOIN users u ON i.userid = u.id 
+      LEFT JOIN categories c ON i.categoryid = c.id
+      LEFT JOIN users claimer ON i.claimedby = claimer.id
       WHERE i.id = $1
     `, [req.params.id]);
     
@@ -69,15 +99,30 @@ router.post('/', auth, validateItemReport, async (req, res) => {
     const { title, description, status, location, dateLost, categoryId } = req.body;
     
     const result = await db.query(
-      'INSERT INTO items (title, description, status, location, dateLost, categoryId, userId) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      'INSERT INTO items (title, description, status, location, datelost, categoryid, userid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
       [title, description || null, status, location, dateLost, categoryId, req.user.id]
     );
     
     const newItemResult = await db.query(`
-      SELECT i.*, u.name as userName, c.name as categoryName 
+      SELECT 
+        i.id,
+        i.title,
+        i.description,
+        i.status,
+        i.location,
+        i.datelost as "dateLost",
+        i.categoryid as "categoryId",
+        i.userid as "userId",
+        i.claimedby as "claimedBy",
+        i.claimedat as "claimedAt",
+        i.createdat as "createdAt",
+        u.name as "userName", 
+        c.name as "categoryName",
+        claimer.name as "claimedByName"
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
-      LEFT JOIN categories c ON i.categoryId = c.id
+      LEFT JOIN users u ON i.userid = u.id 
+      LEFT JOIN categories c ON i.categoryid = c.id
+      LEFT JOIN users claimer ON i.claimedby = claimer.id
       WHERE i.id = $1
     `, [result.rows[0].id]);
     
@@ -105,15 +150,30 @@ router.put('/:id', auth, async (req, res) => {
     }
     
     await db.query(
-      'UPDATE items SET title = $1, description = $2, status = $3, location = $4, dateLost = $5, categoryId = $6 WHERE id = $7',
+      'UPDATE items SET title = $1, description = $2, status = $3, location = $4, datelost = $5, categoryid = $6 WHERE id = $7',
       [title, description, status, location, dateLost, categoryId, req.params.id]
     );
     
     const updatedResult = await db.query(`
-      SELECT i.*, u.name as userName, c.name as categoryName 
+      SELECT 
+        i.id,
+        i.title,
+        i.description,
+        i.status,
+        i.location,
+        i.datelost as "dateLost",
+        i.categoryid as "categoryId",
+        i.userid as "userId",
+        i.claimedby as "claimedBy",
+        i.claimedat as "claimedAt",
+        i.createdat as "createdAt",
+        u.name as "userName", 
+        c.name as "categoryName",
+        claimer.name as "claimedByName"
       FROM items i 
-      LEFT JOIN users u ON i.userId = u.id 
-      LEFT JOIN categories c ON i.categoryId = c.id
+      LEFT JOIN users u ON i.userid = u.id 
+      LEFT JOIN categories c ON i.categoryid = c.id
+      LEFT JOIN users claimer ON i.claimedby = claimer.id
       WHERE i.id = $1
     `, [req.params.id]);
     
@@ -195,9 +255,9 @@ router.put('/:id/claim', auth, async (req, res) => {
         `);
         
         if (tableExists.rows[0].exists) {
-          // Create notification
+        // Create notification
           await db.query(
-            'INSERT INTO notifications (userId, senderId, itemId, message) VALUES ($1, $2, $3, $4)',
+            'INSERT INTO notifications (userid, senderid, itemid, message) VALUES ($1, $2, $3, $4)',
             [item.userid, req.user.id, item.id, message]
           );
           
@@ -208,7 +268,7 @@ router.put('/:id/claim', auth, async (req, res) => {
         
         // Update item with claimedBy info but don't change status
         await db.query(
-          'UPDATE items SET claimedBy = $1, claimedAt = NOW() WHERE id = $2',
+          'UPDATE items SET claimedby = $1, claimedat = NOW() WHERE id = $2',
           [req.user.id, req.params.id]
         );
         
