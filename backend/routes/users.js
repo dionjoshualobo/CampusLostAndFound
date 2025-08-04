@@ -42,16 +42,29 @@ const validateProfileCompletion = (userData) => {
 router.get('/profile', auth, async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, name, email, userType, department, semester, contactInfo, createdAt FROM users WHERE id = $1', 
+      'SELECT id, name, email, usertype, department, semester, contactinfo, createdat FROM users WHERE id = $1', 
       [req.user.id]
     );
     
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
-    // Log to verify email is included in the response
-    console.log('Fetched user profile, email included:', !!result.rows[0].email);
+
+    // Map database column names to frontend expectations
+    const user = result.rows[0];
+    const userData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      userType: user.usertype,
+      department: user.department,
+      semester: user.semester,
+      contactInfo: user.contactinfo,
+      createdAt: user.createdat
+    };
+
+    // Log to verify all fields are included
+    console.log('User profile data:', userData);
     
     // Get user's items
     const itemsResult = await db.query(`
@@ -63,7 +76,7 @@ router.get('/profile', auth, async (req, res) => {
     `, [req.user.id]);
     
     res.json({
-      user: result.rows[0],
+      user: userData,
       items: itemsResult.rows
     });
   } catch (error) {
@@ -124,71 +137,51 @@ router.put('/profile', auth, async (req, res) => {
       }
     }
     
-    // Build the SQL dynamically based on available columns
+    // Build the SQL dynamically - use correct lowercase column names
     const updateFields = ['name = $1'];
     const updateValues = [name.trim()];
     
-    // Only include fields we've confirmed exist
-    try {
-      const result = await db.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'users'
-      `);
-      const columnNames = result.rows.map(col => col.column_name);
-      
-      if (columnNames.includes('usertype')) {
-        updateFields.push('userType = $' + (updateValues.length + 1));
-        updateValues.push(userType);
-      }
-      
-      if (columnNames.includes('department')) {
-        updateFields.push('department = $' + (updateValues.length + 1));
-        updateValues.push(department.trim());
-      }
-      
-      if (columnNames.includes('semester')) {
-        updateFields.push('semester = $' + (updateValues.length + 1));
-        updateValues.push(parsedSemester);
-      }
-      
-      if (columnNames.includes('contactinfo')) {
-        updateFields.push('contactInfo = $' + (updateValues.length + 1));
-        updateValues.push(contactInfo.trim());
-      }
-    } catch (err) {
-      console.error('Error checking columns:', err);
-      return res.status(500).json({ message: 'Database error' });
-    }
+    // Add usertype field
+    updateFields.push('usertype = $' + (updateValues.length + 1));
+    updateValues.push(userType);
     
+    // Add department field
+    updateFields.push('department = $' + (updateValues.length + 1));
+    updateValues.push(department.trim());
+    
+    // Add semester field
+    updateFields.push('semester = $' + (updateValues.length + 1));
+    updateValues.push(parsedSemester);
+    
+    // Add contactinfo field
+    updateFields.push('contactinfo = $' + (updateValues.length + 1));
+    updateValues.push(contactInfo.trim());
+
     // Add user ID for the WHERE clause
     updateValues.push(req.user.id);
     
-    // Execute the update with available fields
+    // Execute the update
     const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${updateValues.length}`;
     console.log('Executing SQL:', sql, updateValues);
     await db.query(sql, updateValues);
     
-    // Get updated user data
+    // Get updated user data with correct column names
     const result = await db.query(
-      'SELECT id, name, email FROM users WHERE id = $1', 
+      'SELECT id, name, email, usertype, department, semester, contactinfo FROM users WHERE id = $1', 
       [req.user.id]
     );
     
-    // Try to get extended fields
-    let userData = { ...result.rows[0] };
-    try {
-      const extraResult = await db.query(
-        'SELECT userType, department, semester, contactInfo FROM users WHERE id = $1',
-        [req.user.id]
-      );
-      
-      if (extraResult.rows.length > 0) {
-        userData = { ...userData, ...extraResult.rows[0] };
-      }
-    } catch (err) {
-      console.log('Could not retrieve extended user data:', err.message);
-    }
+    // Map to frontend expected format
+    const user = result.rows[0];
+    const userData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      userType: user.usertype,
+      department: user.department,
+      semester: user.semester,
+      contactInfo: user.contactinfo
+    };
     
     res.json(userData);
   } catch (error) {
@@ -228,7 +221,7 @@ router.put('/password', auth, async (req, res) => {
     
     // Update password
     await db.query(
-      'UPDATE users SET passwordHash = $1 WHERE id = $2',
+      'UPDATE users SET passwordhash = $1 WHERE id = $2',
       [passwordHash, req.user.id]
     );
     
@@ -244,9 +237,9 @@ router.get('/contact/:id', auth, async (req, res) => {
   try {
     const userId = req.params.id;
     
-    // First get only the core columns we know exist
+    // Get all user info with correct column names
     const result = await db.query(`
-      SELECT id, name, email, contactInfo
+      SELECT id, name, email, usertype, department, semester, contactinfo
       FROM users WHERE id = $1
     `, [userId]);
     
@@ -254,38 +247,17 @@ router.get('/contact/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Try to get extended columns conditionally
-    let userInfo = {
-      id: result.rows[0].id,
-      name: result.rows[0].name,
-      email: result.rows[0].email,
-      contactinfo: result.rows[0].contactinfo || 'Not provided'
+    // Map to frontend expected format
+    const user = result.rows[0];
+    const userInfo = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      userType: user.usertype,
+      department: user.department,
+      semester: user.semester,
+      contactInfo: user.contactinfo || 'Not provided'
     };
-    
-    // Try to get additional columns if they exist
-    try {
-      const columnsResult = await db.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name = 'users' AND column_name IN ('usertype', 'department', 'semester')
-      `);
-      
-      const existingColumns = columnsResult.rows.map(row => row.column_name);
-      
-      if (existingColumns.length > 0) {
-        const columnsString = existingColumns.join(', ');
-        const extendedResult = await db.query(`
-          SELECT ${columnsString} FROM users WHERE id = $1
-        `, [userId]);
-        
-        if (extendedResult.rows.length > 0) {
-          userInfo = { ...userInfo, ...extendedResult.rows[0] };
-        }
-      }
-    } catch (err) {
-      console.log('Extended user info not available:', err.message);
-      // Continue without extended info
-    }
     
     res.json(userInfo);
   } catch (error) {
