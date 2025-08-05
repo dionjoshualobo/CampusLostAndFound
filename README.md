@@ -1,5 +1,4 @@
 # Campus Lost and Found
-
 A web application for managing lost and found items on campus. Students can report lost items, post found items, and connect with each other to recover lost belongings.
 
 ## Features
@@ -59,8 +58,13 @@ CampusLostAndFound/
 
 ### Prerequisites
 - Node.js (v14 or higher)
-- MySQL (v8.0 or higher)
+- PostgreSQL (via Supabase)
 - npm or yarn
+
+### Database Setup
+This project uses **Supabase PostgreSQL** as the database backend. The database schema is automatically initialized when you start the backend server.
+
+**Important:** This project uses a custom authentication system with integer-based user IDs, not Supabase Auth (which uses UUIDs).
 
 ### Backend Setup
 

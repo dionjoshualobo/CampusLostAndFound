@@ -18,3 +18,5 @@ npm-debug.log*
 .vscode
 *.swp
 *.swo
+
+/temporary

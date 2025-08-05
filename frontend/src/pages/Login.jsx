@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { login as apiLogin } from '../api';
+import { isProfileComplete } from '../utils/profileUtils';
 
 const Login = ({ login }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -29,7 +31,16 @@ const Login = ({ login }) => {
     
     try {
       const response = await apiLogin({ email, password });
-      login(response.data.token, response.data.user);
+      const userData = response.data.user;
+      
+      // Check if profile is complete
+      if (!isProfileComplete(userData)) {
+        login(response.data.token, userData);
+        // Redirect to profile completion with a message
+        navigate('/profile?redirect=true&reason=mandatory');
+      } else {
+        login(response.data.token, userData);
+      }
     } catch (err) {
       console.error('Login error:', err);
       setError(err.response?.data?.message || 'Login failed. Please try again.');

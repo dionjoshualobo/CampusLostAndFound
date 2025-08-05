@@ -80,18 +80,21 @@ const NotificationDropdown = () => {
   const handleViewContact = (senderId, event) => {
     event.preventDefault(); // Prevent the link from navigating
     event.stopPropagation(); // Prevent bubbling to parent elements
+    console.log('Opening contact modal for userId:', senderId);
     setSelectedUserId(senderId);
     setShowContactModal(true);
+    setIsOpen(false); // Close the dropdown when opening the modal
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
     <>
-      <div className="dropdown" ref={dropdownRef}>
+      <div className={`dropdown${isOpen ? ' show' : ''}`} ref={dropdownRef}>
         <button
           className="btn btn-link nav-link position-relative"
           onClick={() => setIsOpen(!isOpen)}
+          aria-expanded={isOpen}
         >
           <i className="bi bi-bell"></i>
           {unreadCount > 0 && (
@@ -101,7 +104,10 @@ const NotificationDropdown = () => {
           )}
         </button>
 
-        <div className={`dropdown-menu dropdown-menu-end${isOpen ? ' show' : ''}`} style={{ minWidth: '300px' }}>
+        <div 
+          className={`dropdown-menu dropdown-menu-end${isOpen ? ' show' : ''}`} 
+          style={{ minWidth: '350px', maxHeight: '400px', overflowY: 'auto' }}
+        >
           <h6 className="dropdown-header">Notifications</h6>
 
           {isLoading ? (

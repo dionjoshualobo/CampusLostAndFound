@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getItem, deleteItem, claimItem } from '../api';
 import CommentSection from '../components/CommentSection';
 import ContactInfoModal from '../components/ContactInfoModal';
+import ProfileCompletionModal from '../components/ProfileCompletionModal';
 import { formatDate } from '../utils/dateUtils';
+import { isProfileComplete } from '../utils/profileUtils';
 
 const ItemDetails = () => {
   const { id } = useParams();
@@ -15,6 +17,7 @@ const ItemDetails = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   
   const isAuthenticated = !!localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -53,6 +56,12 @@ const ItemDetails = () => {
   
   const handleClaimOrResolve = async (action) => {
     console.log(`Action triggered: ${action}`);
+    
+    // Check profile completion before allowing action
+    if (!isProfileComplete(user)) {
+      setShowProfileModal(true);
+      return;
+    }
     
     const confirmMessage = action === 'resolve' 
       ? 'Are you sure you want to mark this item as resolved?' 
@@ -103,115 +112,126 @@ const ItemDetails = () => {
   const showClaimerContact = isOwner && item.claimedBy && item.status !== 'resolved';
   
   return (
-    <div className="row justify-content-center">
-      <div className="col-md-10">
-        <div className={`card ${statusClass}`}>
-          <div className="card-body">
-            <div className="d-flex justify-content-between align-items-center mb-3">
-              <h2 className="card-title">{item.title}</h2>
-              <span className={`badge ${statusBadgeClass}`}>
-                {item.status.toUpperCase()}
-              </span>
-            </div>
-            
-            <div className="row mb-4">
-              <div className="col-md-4">
-                <p><strong>Location:</strong> {item.location || 'Not specified'}</p>
+    <>
+      <div className="row justify-content-center">
+        <div className="col-md-10">
+          <div className={`card ${statusClass}`}>
+            <div className="card-body">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h2 className="card-title">{item.title}</h2>
+                <span className={`badge ${statusBadgeClass}`}>
+                  {item.status.toUpperCase()}
+                </span>
               </div>
-              <div className="col-md-4">
-                <p>
-                  <strong>Date {item.status === 'lost' ? 'Lost' : 'Found'}:</strong> {formatDate(item.dateLost)}
-                </p>
-              </div>
-              <div className="col-md-4">
-                <p><strong>Category:</strong> {item.categoryName || 'Not specified'}</p>
-              </div>
-            </div>
-            
-            <div className="mb-4">
-              <h5>Description</h5>
-              <p>{item.description || 'No description provided.'}</p>
-            </div>
-            
-            <div className="mb-3">
-              <p className="text-muted">
-                Reported by: {item.userName || 'Anonymous'}
-              </p>
               
-              {item.claimedByName && (
-                <div className="d-flex align-items-center">
-                  <p className="text-muted mb-0 me-3">
-                    {item.status === 'claimed' ? 'Claimed by' : 'Resolved by'}: {item.claimedByName}
-                    {item.claimedAt && ` on ${formatDate(item.claimedAt)}`}
+              <div className="row mb-4">
+                <div className="col-md-4">
+                  <p><strong>Location:</strong> {item.location || 'Not specified'}</p>
+                </div>
+                <div className="col-md-4">
+                  <p>
+                    <strong>Date {item.status === 'lost' ? 'Lost' : 'Found'}:</strong> {formatDate(item.dateLost)}
                   </p>
-                  
-                  {showClaimerContact && (
-                    <button 
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={() => setShowContactModal(true)}
+                </div>
+                <div className="col-md-4">
+                  <p><strong>Category:</strong> {item.categoryName || 'Not specified'}</p>
+                </div>
+              </div>
+              
+              <div className="mb-4">
+                <h5>Description</h5>
+                <p>{item.description || 'No description provided.'}</p>
+              </div>
+              
+              <div className="mb-3">
+                <p className="text-muted">
+                  Reported by: {item.userName || 'Anonymous'}
+                </p>
+                
+                {item.claimedByName && (
+                  <div className="d-flex align-items-center">
+                    <p className="text-muted mb-0 me-3">
+                      {item.status === 'claimed' ? 'Claimed by' : 'Resolved by'}: {item.claimedByName}
+                      {item.claimedAt && ` on ${formatDate(item.claimedAt)}`}
+                    </p>
+                    
+                    {showClaimerContact && (
+                      <button 
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => setShowContactModal(true)}
+                      >
+                        View Contact Info
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {error && <div className="alert alert-danger">{error}</div>}
+              {success && <div className="alert alert-success">{success}</div>}
+              
+              <div className="d-flex justify-content-between">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/')}
+                >
+                  Back to List
+                </button>
+                
+                <div>
+                  {canClaimOrResolve && (
+                    <button
+                      className={`btn ${item.status === 'lost' ? 'btn-success' : 'btn-primary'} me-2`}
+                      onClick={() => handleClaimOrResolve('notify')}
+                      disabled={isClaiming}
                     >
-                      View Contact Info
+                      {isClaiming ? 'Processing...' : item.status === 'lost' ? 'I Found This' : 'I Lost This'}
+                    </button>
+                  )}
+                  
+                  {isOwner && isActiveItem && (
+                    <button
+                      className="btn btn-info me-2"
+                      onClick={() => handleClaimOrResolve('resolve')}
+                      disabled={isClaiming}
+                    >
+                      {isClaiming ? 'Processing...' : 'Mark as Resolved'}
+                    </button>
+                  )}
+                  
+                  {isOwner && (
+                    <button
+                      className="btn btn-danger"
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete Item'}
                     </button>
                   )}
                 </div>
-              )}
-            </div>
-            
-            {error && <div className="alert alert-danger">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
-            
-            <div className="d-flex justify-content-between">
-              <button
-                className="btn btn-secondary"
-                onClick={() => navigate('/')}
-              >
-                Back to List
-              </button>
-              
-              <div>
-                {canClaimOrResolve && (
-                  <button
-                    className={`btn ${item.status === 'lost' ? 'btn-success' : 'btn-primary'} me-2`}
-                    onClick={() => handleClaimOrResolve('notify')}
-                    disabled={isClaiming}
-                  >
-                    {isClaiming ? 'Processing...' : item.status === 'lost' ? 'I Found This' : 'I Lost This'}
-                  </button>
-                )}
-                
-                {isOwner && isActiveItem && (
-                  <button
-                    className="btn btn-info me-2"
-                    onClick={() => handleClaimOrResolve('resolve')}
-                    disabled={isClaiming}
-                  >
-                    {isClaiming ? 'Processing...' : 'Mark as Resolved'}
-                  </button>
-                )}
-                
-                {isOwner && (
-                  <button
-                    className="btn btn-danger"
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                  >
-                    {isDeleting ? 'Deleting...' : 'Delete Item'}
-                  </button>
-                )}
               </div>
             </div>
           </div>
+          
+          <CommentSection itemId={id} isAuthenticated={isAuthenticated} />
         </div>
         
-        <CommentSection itemId={id} isAuthenticated={isAuthenticated} />
+        <ContactInfoModal 
+          userId={item?.claimedBy} 
+          isOpen={showContactModal} 
+          onClose={() => setShowContactModal(false)} 
+        />
       </div>
       
-      <ContactInfoModal 
-        userId={item?.claimedBy} 
-        isOpen={showContactModal} 
-        onClose={() => setShowContactModal(false)} 
+      <ProfileCompletionModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        user={user}
+        actionDescription={
+          item?.status === 'lost' ? 'claim you found this item' : 'claim you lost this item'
+        }
       />
-    </div>
+    </>
   );
 };
 

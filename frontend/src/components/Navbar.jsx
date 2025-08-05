@@ -2,9 +2,11 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import NotificationDropdown from './NotificationDropdown';
 import DarkModeToggle from './DarkModeToggle';
+import { isProfileComplete } from '../utils/profileUtils';
 
 const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) => {
   const navigate = useNavigate();
+  const profileIncomplete = isAuthenticated && user && !isProfileComplete(user);
 
   const handleLogout = () => {
     logout();
@@ -54,22 +56,32 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
               toggleDarkMode={toggleDarkMode} 
             />
             
+            {isAuthenticated && <NotificationDropdown />}
+            
             {isAuthenticated ? (
               <div className="dropdown">
                 <button 
-                  className="btn btn-outline-primary dropdown-toggle" 
+                  className={`btn btn-outline-primary dropdown-toggle position-relative ${profileIncomplete ? 'btn-outline-warning' : ''}`}
                   type="button" 
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
                 >
                   <i className="bi bi-person-circle me-1"></i>
                   {user?.name || 'User'}
+                  {profileIncomplete && (
+                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+                      !
+                    </span>
+                  )}
                 </button>
                 <ul className="dropdown-menu dropdown-menu-end">
                   <li>
-                    <Link className="dropdown-item" to="/profile">
+                    <Link 
+                      className={`dropdown-item ${profileIncomplete ? 'text-warning fw-bold' : ''}`} 
+                      to="/profile"
+                    >
                       <i className="bi bi-person me-2"></i>
-                      Profile
+                      Profile {profileIncomplete && '(Incomplete)'}
                     </Link>
                   </li>
                   <li><hr className="dropdown-divider" /></li>

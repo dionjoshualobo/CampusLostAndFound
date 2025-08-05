@@ -8,16 +8,16 @@ const auth = require('../middleware/auth');
 // Register a user
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, userType, department, semester, contactInfo } = req.body;
     
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Please enter all fields' });
     }
     
     // Check if user exists
-    const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     
-    if (rows.length > 0) {
+    if (result.rows.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
     }
     
@@ -25,13 +25,13 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     
-    // Insert user into database
-    const [result] = await db.execute(
-      'INSERT INTO users (name, email, passwordHash) VALUES (?, ?, ?)',
-      [name, email, passwordHash]
+    // Insert user into database with all profile fields
+    const insertResult = await db.query(
+      'INSERT INTO users (name, email, passwordHash, usertype, department, semester, contactinfo) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [name, email, passwordHash, userType || 'student', department || null, semester || null, contactInfo || null]
     );
     
-    const userId = result.insertId;
+    const userId = insertResult.rows[0].id;
     
     // Create JWT token
     const token = jwt.sign(
@@ -45,7 +45,11 @@ router.post('/register', async (req, res) => {
       user: {
         id: userId,
         name,
-        email
+        email,
+        userType: userType || 'student',
+        department: department || null,
+        semester: semester || null,
+        contactInfo: contactInfo || null
       }
     });
   } catch (error) {
@@ -64,16 +68,16 @@ router.post('/login', async (req, res) => {
     }
     
     // Check if user exists
-    const [rows] = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
     
-    const user = rows[0];
+    const user = result.rows[0];
     
     // Validate password
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await bcrypt.compare(password, user.passwordhash);
     
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -91,7 +95,11 @@ router.post('/login', async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        userType: user.usertype,
+        department: user.department,
+        semester: user.semester,
+        contactInfo: user.contactinfo
       }
     });
   } catch (error) {
@@ -103,13 +111,22 @@ router.post('/login', async (req, res) => {
 // Get user data
 router.get('/user', auth, async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT id, name, email FROM users WHERE id = ?', [req.user.id]);
+    const result = await db.query('SELECT id, name, email, usertype, department, semester, contactinfo FROM users WHERE id = $1', [req.user.id]);
     
-    if (rows.length === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    res.json(rows[0]);
+    const user = result.rows[0];
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      userType: user.usertype,
+      department: user.department,
+      semester: user.semester,
+      contactInfo: user.contactinfo
+    });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ message: 'Server error' });
