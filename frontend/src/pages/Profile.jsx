@@ -57,7 +57,6 @@ const Profile = () => {
     const fetchProfile = async () => {
       try {
         const response = await getUserProfile();
-        console.log('Profile API response:', response.data.user); // Debug log
         
         setProfileData({
           name: response.data.user.name,

@@ -80,7 +80,6 @@ const NotificationDropdown = () => {
   const handleViewContact = (senderId, event) => {
     event.preventDefault(); // Prevent the link from navigating
     event.stopPropagation(); // Prevent bubbling to parent elements
-    console.log('Opening contact modal for userId:', senderId);
     setSelectedUserId(senderId);
     setShowContactModal(true);
     setIsOpen(false); // Close the dropdown when opening the modal

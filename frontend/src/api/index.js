@@ -45,8 +45,6 @@ export const claimItem = (id, action) => {
   // Map actions to API status values
   const statusValue = action === 'resolve' ? 'resolved' : 'notify';
   
-  console.log(`API sending action: "${statusValue}" for item ${id}`);
-  
   // Send exactly what the backend expects
   return api.put(`/items/${id}/claim`, { newStatus: statusValue });
 };

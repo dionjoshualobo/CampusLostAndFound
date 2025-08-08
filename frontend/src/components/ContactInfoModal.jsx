@@ -9,17 +9,14 @@ const ContactInfoModal = ({ userId, isOpen, onClose }) => {
   useEffect(() => {
     const fetchUserContact = async () => {
       if (!userId || !isOpen) {
-        console.log('Modal not opening - userId:', userId, 'isOpen:', isOpen);
         return;
       }
       
-      console.log('Fetching contact info for user:', userId);
       setIsLoading(true);
       setError(null);
       
       try {
         const response = await getUserContact(userId);
-        console.log('User contact response:', response.data);
         setUserInfo(response.data);
         setIsLoading(false);
       } catch (err) {
@@ -31,8 +28,6 @@ const ContactInfoModal = ({ userId, isOpen, onClose }) => {
     
     fetchUserContact();
   }, [userId, isOpen]);
-  
-  console.log('ContactInfoModal render - isOpen:', isOpen, 'userId:', userId);
   
   if (!isOpen) return null;
   

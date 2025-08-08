@@ -63,9 +63,6 @@ router.get('/profile', auth, async (req, res) => {
       createdAt: user.createdat
     };
 
-    // Log to verify all fields are included
-    console.log('User profile data:', userData);
-    
     // Get user's items
     const itemsResult = await db.query(`
       SELECT i.*, c.name as categoryName
@@ -105,9 +102,6 @@ router.put('/profile', auth, async (req, res) => {
         errors: validationErrors
       });
     }
-    
-    // Debug logging
-    console.log('Profile update received:', { name, userType, department, semester, contactInfo });
     
     // Check if user exists
     const userResult = await db.query('SELECT id FROM users WHERE id = $1', [req.user.id]);
@@ -162,7 +156,6 @@ router.put('/profile', auth, async (req, res) => {
     
     // Execute the update
     const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${updateValues.length}`;
-    console.log('Executing SQL:', sql, updateValues);
     await db.query(sql, updateValues);
     
     // Get updated user data with correct column names

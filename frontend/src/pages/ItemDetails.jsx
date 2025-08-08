@@ -55,8 +55,6 @@ const ItemDetails = () => {
   };
   
   const handleClaimOrResolve = async (action) => {
-    console.log(`Action triggered: ${action}`);
-    
     // Check profile completion before allowing action
     if (!isProfileComplete(user)) {
       setShowProfileModal(true);
@@ -75,9 +73,7 @@ const ItemDetails = () => {
     setError(null);
     
     try {
-      console.log(`Sending action "${action}" to API for item ${id}`);
       const response = await claimItem(id, action);
-      console.log('Response received:', response.data);
       
       if (response.data.notificationSent) {
         setSuccess('Notification sent to the item owner. They will contact you if they want to proceed.');
