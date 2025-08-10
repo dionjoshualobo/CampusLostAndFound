@@ -14,6 +14,19 @@ const ItemCard = ({ item }) => {
   
   return (
     <div className={`card mb-3 ${getStatusClass(item.status)}`}>
+      {/* Image section */}
+      {item.images && item.images.length > 0 && (
+        <img
+          src={item.images[0].url}
+          alt={item.title}
+          className="card-img-top"
+          style={{ height: '200px', objectFit: 'cover' }}
+          onError={(e) => {
+            e.target.style.display = 'none';
+          }}
+        />
+      )}
+      
       <div className="card-body">
         <h5 className="card-title">{item.title}</h5>
         <h6 className="card-subtitle mb-2 text-muted">
@@ -38,6 +51,16 @@ const ItemCard = ({ item }) => {
             Reported by: {item.userName || 'Anonymous'}
           </small>
         </div>
+        
+        {/* Show image count if multiple images */}
+        {item.images && item.images.length > 1 && (
+          <div className="mt-2">
+            <small className="text-muted">
+              📷 {item.images.length} images
+            </small>
+          </div>
+        )}
+        
         <div className="mt-3">
           <Link to={`/items/${item.id}`} className="btn btn-primary btn-sm">
             View Details
