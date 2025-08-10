@@ -3,8 +3,9 @@ const router = express.Router();
 const db = require('../config/db');
 const auth = require('../middleware/auth');
 const { validateItemReport } = require('../middleware/validation');
+const { upload, uploadToSupabase, deleteFromSupabase } = require('../middleware/upload');
 
-// Get all items with category info
+// Get all items with category info and images
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(`
@@ -22,11 +23,23 @@ router.get('/', async (req, res) => {
         i.createdat as "createdAt",
         u.name as "userName", 
         c.name as "categoryName",
-        claimer.name as "claimedByName"
+        claimer.name as "claimedByName",
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', img.id,
+              'url', img.imageurl,
+              'filename', img.filename
+            )
+          ) FILTER (WHERE img.id IS NOT NULL),
+          '[]'
+        ) as images
       FROM items i 
       LEFT JOIN users u ON i.userid = u.id 
       LEFT JOIN categories c ON i.categoryid = c.id
       LEFT JOIN users claimer ON i.claimedby = claimer.id
+      LEFT JOIN item_images img ON i.id = img.itemid
+      GROUP BY i.id, u.name, c.name, claimer.name
       ORDER BY i.createdat DESC
     `);
     
@@ -56,7 +69,7 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Get single item with category info
+// Get single item with category info and images
 router.get('/:id', async (req, res) => {
   try {
     const result = await db.query(`
@@ -74,12 +87,24 @@ router.get('/:id', async (req, res) => {
         i.createdat as "createdAt",
         u.name as "userName", 
         c.name as "categoryName",
-        claimer.name as "claimedByName"
+        claimer.name as "claimedByName",
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', img.id,
+              'url', img.imageurl,
+              'filename', img.filename
+            )
+          ) FILTER (WHERE img.id IS NOT NULL),
+          '[]'
+        ) as images
       FROM items i 
       LEFT JOIN users u ON i.userid = u.id 
       LEFT JOIN categories c ON i.categoryid = c.id
       LEFT JOIN users claimer ON i.claimedby = claimer.id
+      LEFT JOIN item_images img ON i.id = img.itemid
       WHERE i.id = $1
+      GROUP BY i.id, u.name, c.name, claimer.name
     `, [req.params.id]);
     
     if (result.rows.length === 0) {
@@ -93,16 +118,40 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create a new item (protected route) with validation
-router.post('/', auth, validateItemReport, async (req, res) => {
+// Create a new item (protected route) with validation and optional image upload
+router.post('/', auth, upload.single('image'), validateItemReport, async (req, res) => {
+  let uploadedImageData = null;
+  
   try {
     const { title, description, status, location, dateLost, categoryId } = req.body;
     
+    // Upload image to Supabase if provided
+    if (req.file) {
+      try {
+        uploadedImageData = await uploadToSupabase(req.file);
+      } catch (uploadError) {
+        console.error('Image upload error:', uploadError);
+        return res.status(400).json({ message: 'Failed to upload image. Please try again.' });
+      }
+    }
+    
+    // Create item
     const result = await db.query(
       'INSERT INTO items (title, description, status, location, datelost, categoryid, userid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
       [title, description || null, status, location, dateLost, categoryId, req.user.id]
     );
     
+    const itemId = result.rows[0].id;
+    
+    // Save image data if uploaded
+    if (uploadedImageData) {
+      await db.query(
+        'INSERT INTO item_images (itemid, imageurl, filename, filesize, mimetype) VALUES ($1, $2, $3, $4, $5)',
+        [itemId, uploadedImageData.url, uploadedImageData.filename, uploadedImageData.size, uploadedImageData.mimetype]
+      );
+    }
+    
+    // Get the complete item data with images
     const newItemResult = await db.query(`
       SELECT 
         i.id,
@@ -118,17 +167,39 @@ router.post('/', auth, validateItemReport, async (req, res) => {
         i.createdat as "createdAt",
         u.name as "userName", 
         c.name as "categoryName",
-        claimer.name as "claimedByName"
+        claimer.name as "claimedByName",
+        COALESCE(
+          JSON_AGG(
+            JSON_BUILD_OBJECT(
+              'id', img.id,
+              'url', img.imageurl,
+              'filename', img.filename
+            )
+          ) FILTER (WHERE img.id IS NOT NULL),
+          '[]'
+        ) as images
       FROM items i 
       LEFT JOIN users u ON i.userid = u.id 
       LEFT JOIN categories c ON i.categoryid = c.id
       LEFT JOIN users claimer ON i.claimedby = claimer.id
+      LEFT JOIN item_images img ON i.id = img.itemid
       WHERE i.id = $1
-    `, [result.rows[0].id]);
+      GROUP BY i.id, u.name, c.name, claimer.name
+    `, [itemId]);
     
     res.status(201).json(newItemResult.rows[0]);
   } catch (error) {
     console.error('Create item error:', error);
+    
+    // Clean up uploaded image if item creation failed
+    if (uploadedImageData) {
+      try {
+        await deleteFromSupabase(uploadedImageData.path);
+      } catch (deleteError) {
+        console.error('Failed to clean up uploaded image:', deleteError);
+      }
+    }
+    
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -387,6 +458,50 @@ router.delete('/:id', auth, async (req, res) => {
     res.json({ message: 'Item removed' });
   } catch (error) {
     console.error('Delete item error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete an image from an item (only the creator can delete)
+router.delete('/:id/images/:imageId', auth, async (req, res) => {
+  try {
+    const { id: itemId, imageId } = req.params;
+    
+    // Check if item exists and belongs to user
+    const itemResult = await db.query('SELECT userid FROM items WHERE id = $1', [itemId]);
+    
+    if (itemResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+    
+    if (itemResult.rows[0].userid !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to delete this image' });
+    }
+    
+    // Get image data
+    const imageResult = await db.query('SELECT * FROM item_images WHERE id = $1 AND itemid = $2', [imageId, itemId]);
+    
+    if (imageResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+    
+    const imageData = imageResult.rows[0];
+    
+    // Delete from database first
+    await db.query('DELETE FROM item_images WHERE id = $1', [imageId]);
+    
+    // Try to delete from Supabase storage
+    try {
+      const filePath = `item-images/${imageData.filename}`;
+      await deleteFromSupabase(filePath);
+    } catch (deleteError) {
+      console.error('Failed to delete image from storage:', deleteError);
+      // Don't fail the request if storage deletion fails
+    }
+    
+    res.json({ message: 'Image deleted successfully' });
+  } catch (error) {
+    console.error('Delete image error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -97,6 +97,20 @@ const initDb = async () => {
         FOREIGN KEY (itemid) REFERENCES items(id) ON DELETE CASCADE
       )
     `);
+
+    // Create item_images table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS item_images (
+        id SERIAL PRIMARY KEY,
+        itemid INTEGER NOT NULL,
+        imageurl TEXT NOT NULL,
+        filename VARCHAR(255) NOT NULL,
+        filesize INTEGER,
+        mimetype VARCHAR(100),
+        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (itemid) REFERENCES items(id) ON DELETE CASCADE
+      )
+    `);
     
     console.log('Database tables initialized');
   } catch (error) {
