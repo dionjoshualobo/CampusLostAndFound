@@ -43,6 +43,9 @@ router.get('/', async (req, res) => {
       ORDER BY i.createdat DESC
     `);
     
+    console.log('Returning items:', result.rows.length);
+    console.log('Sample item images:', result.rows[0]?.images);
+    
     res.json(result.rows);
   } catch (error) {
     console.error('Get items error:', error);
@@ -125,13 +128,18 @@ router.post('/', auth, upload.single('image'), validateItemReport, async (req, r
   try {
     const { title, description, status, location, dateLost, categoryId } = req.body;
     
+    console.log('Received item data:', { title, description, status, location, dateLost, categoryId });
+    console.log('Received file:', req.file ? 'Yes' : 'No');
+    
     // Upload image to Supabase if provided
     if (req.file) {
       try {
         uploadedImageData = await uploadToSupabase(req.file);
+        console.log('Image uploaded successfully:', uploadedImageData.url);
       } catch (uploadError) {
         console.error('Image upload error:', uploadError);
-        return res.status(400).json({ message: 'Failed to upload image. Please try again.' });
+        // Don't return error - allow item creation to continue without image
+        // The user can always add images later if needed
       }
     }
     

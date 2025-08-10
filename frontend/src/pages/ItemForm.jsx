@@ -126,7 +126,9 @@ const ItemForm = () => {
     if (fileInput) {
       fileInput.value = '';
     }
-  };  const validateForm = () => {
+  };
+
+  const validateForm = () => {
     const errors = {};
     
     if (!title.trim()) {
