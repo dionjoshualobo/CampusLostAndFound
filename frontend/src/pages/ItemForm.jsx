@@ -13,15 +13,17 @@ const ItemForm = () => {
     status: 'lost',
     location: '',
     dateLost: '',
-    categoryId: ''
+    categoryId: '',
+    image: null
   });
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
   
-  const { title, description, status, location, dateLost, categoryId } = formData;
+  const { title, description, status, location, dateLost, categoryId, image } = formData;
   
   // Get today's date in YYYY-MM-DD format for max date
   const getTodayDate = () => {
@@ -36,6 +38,15 @@ const ItemForm = () => {
       setShowProfileModal(true);
     }
   }, []);
+
+  // Cleanup image preview URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (imagePreview) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
   
   useEffect(() => {
     const fetchCategories = async () => {
@@ -53,10 +64,70 @@ const ItemForm = () => {
     fetchCategories();
   }, []);
   
-  const onChange = e => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const onChange = (e) => {
+    const { name, value, files } = e.target;
+    
+    if (name === 'image') {
+      const file = files[0];
+      if (file) {
+        // Validate file size (5MB limit)
+        if (file.size > 5 * 1024 * 1024) {
+          setValidationErrors(prev => ({
+            ...prev,
+            image: 'Image size must be less than 5MB'
+          }));
+          return;
+        }
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          setValidationErrors(prev => ({
+            ...prev,
+            image: 'Please select a valid image file'
+          }));
+          return;
+        }
+        
+        // Clear any previous image errors
+        setValidationErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors.image;
+          return newErrors;
+        });
+        
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(file);
+        setImagePreview(previewUrl);
+        
+        setFormData(prevState => ({
+          ...prevState,
+          [name]: file
+        }));
+      }
+    } else {
+      setFormData(prevState => ({
+        ...prevState,
+        [name]: value
+      }));
+    }
   };
   
+  const removeImage = () => {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImagePreview(null);
+    setFormData(prev => ({
+      ...prev,
+      image: null
+    }));
+    // Reset the file input
+    const fileInput = document.getElementById('image');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
   const validateForm = () => {
     const errors = {};
     
@@ -254,6 +325,43 @@ const ItemForm = () => {
                     <div className="invalid-feedback">{validationErrors.dateLost}</div>
                   )}
                   <div className="form-text">You cannot select future dates</div>
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="image" className="form-label">Image (Optional)</label>
+                  <input
+                    type="file"
+                    className={`form-control ${validationErrors.image ? 'is-invalid' : ''}`}
+                    id="image"
+                    name="image"
+                    accept="image/*"
+                    onChange={onChange}
+                  />
+                  {validationErrors.image && (
+                    <div className="invalid-feedback">{validationErrors.image}</div>
+                  )}
+                  <div className="form-text">Maximum file size: 5MB. Supported formats: JPG, PNG, GIF, etc.</div>
+                  
+                  {imagePreview && (
+                    <div className="mt-3">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <small className="text-muted">Image Preview:</small>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={removeImage}
+                        >
+                          Remove Image
+                        </button>
+                      </div>
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="img-thumbnail"
+                        style={{ maxWidth: '200px', maxHeight: '200px' }}
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="d-flex justify-content-between">

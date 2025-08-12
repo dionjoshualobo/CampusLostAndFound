@@ -38,6 +38,7 @@ const ItemCard = ({ item }) => {
             Reported by: {item.userName || 'Anonymous'}
           </small>
         </div>
+        
         <div className="mt-3">
           <Link to={`/items/${item.id}`} className="btn btn-primary btn-sm">
             View Details

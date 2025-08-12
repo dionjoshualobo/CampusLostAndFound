@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getItem, deleteItem, claimItem } from '../api';
+import { getItem, deleteItem, claimItem, deleteItemImage } from '../api';
 import CommentSection from '../components/CommentSection';
 import ContactInfoModal from '../components/ContactInfoModal';
 import ProfileCompletionModal from '../components/ProfileCompletionModal';
@@ -18,6 +18,8 @@ const ItemDetails = () => {
   const [isClaiming, setIsClaiming] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   
   const isAuthenticated = !!localStorage.getItem('token');
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -87,6 +89,44 @@ const ItemDetails = () => {
       setIsClaiming(false);
     }
   };
+
+  const handleDeleteImage = async (imageId) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) {
+      return;
+    }
+
+    try {
+      await deleteItemImage(id, imageId);
+      // Refresh item data to update images
+      const response = await getItem(id);
+      setItem(response.data);
+      setSuccess('Image deleted successfully');
+    } catch (err) {
+      console.error('Error deleting image:', err);
+      setError(err.response?.data?.message || 'Failed to delete image. Please try again.');
+    }
+  };
+
+  const openImageModal = (index) => {
+    setSelectedImageIndex(index);
+    setIsImageModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setIsImageModalOpen(false);
+  };
+
+  const nextImage = () => {
+    if (item.images && item.images.length > 0) {
+      setSelectedImageIndex((prev) => (prev + 1) % item.images.length);
+    }
+  };
+
+  const prevImage = () => {
+    if (item.images && item.images.length > 0) {
+      setSelectedImageIndex((prev) => (prev - 1 + item.images.length) % item.images.length);
+    }
+  };
   
   if (isLoading) return <div>Loading item details...</div>;
   if (error) return <div className="alert alert-danger">{error}</div>;
@@ -138,6 +178,44 @@ const ItemDetails = () => {
                 <h5>Description</h5>
                 <p>{item.description || 'No description provided.'}</p>
               </div>
+
+              {/* Image Gallery */}
+              {item.images && item.images.length > 0 && (
+                <div className="mb-4">
+                  <h5>Images</h5>
+                  <div className="row">
+                    {item.images.map((image, index) => (
+                      <div key={image.id} className="col-md-3 mb-3">
+                        <div className="position-relative">
+                          <img
+                            src={image.url}
+                            alt={`${item.title} - Image ${index + 1}`}
+                            className="img-thumbnail cursor-pointer"
+                            style={{ width: '100%', height: '150px', objectFit: 'cover', cursor: 'pointer' }}
+                            onClick={() => openImageModal(index)}
+                            onError={(e) => {
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIE5vdCBGb3VuZDwvdGV4dD48L3N2Zz4=';
+                            }}
+                          />
+                          {isOwner && (
+                            <button
+                              className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteImage(image.id);
+                              }}
+                              title="Delete image"
+                              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div className="mb-3">
                 <p className="text-muted">
@@ -218,6 +296,72 @@ const ItemDetails = () => {
           onClose={() => setShowContactModal(false)} 
         />
       </div>
+
+      {/* Image Modal */}
+      {isImageModalOpen && item.images && item.images.length > 0 && (
+        <div 
+          className="modal d-block" 
+          style={{ 
+            backgroundColor: 'rgba(0,0,0,0.8)', 
+            zIndex: 1050 
+          }}
+          onClick={closeImageModal}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content bg-transparent border-0">
+              <div className="modal-body p-0 position-relative">
+                <button
+                  type="button"
+                  className="btn-close btn-close-white position-absolute top-0 end-0 m-3"
+                  style={{ zIndex: 1051 }}
+                  onClick={closeImageModal}
+                ></button>
+                
+                <img
+                  src={item.images[selectedImageIndex]?.url}
+                  alt={`${item.title} - Image ${selectedImageIndex + 1}`}
+                  className="img-fluid w-100"
+                  style={{ maxHeight: '80vh', objectFit: 'contain' }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                
+                {item.images.length > 1 && (
+                  <>
+                    <button
+                      className="btn btn-light position-absolute top-50 start-0 translate-middle-y ms-3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        prevImage();
+                      }}
+                      style={{ zIndex: 1051 }}
+                    >
+                      ‹
+                    </button>
+                    
+                    <button
+                      className="btn btn-light position-absolute top-50 end-0 translate-middle-y me-3"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        nextImage();
+                      }}
+                      style={{ zIndex: 1051 }}
+                    >
+                      ›
+                    </button>
+                    
+                    <div 
+                      className="position-absolute bottom-0 start-50 translate-middle-x mb-3 text-white bg-dark bg-opacity-75 px-2 py-1 rounded"
+                      style={{ zIndex: 1051 }}
+                    >
+                      {selectedImageIndex + 1} / {item.images.length}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <ProfileCompletionModal
         isOpen={showProfileModal}

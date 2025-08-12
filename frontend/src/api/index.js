@@ -39,7 +39,30 @@ export const getUserContact = (userId) => api.get(`/users/contact/${userId}`);
 export const getItems = () => api.get('/items');
 export const getItemStats = () => api.get('/items/stats');
 export const getItem = (id) => api.get(`/items/${id}`);
-export const createItem = (itemData) => api.post('/items', itemData);
+export const createItem = (itemData) => {
+  // Check if itemData contains a file (image)
+  if (itemData.image) {
+    // Create FormData for multipart/form-data
+    const formData = new FormData();
+    
+    // Add all fields to FormData
+    Object.keys(itemData).forEach(key => {
+      if (itemData[key] !== null && itemData[key] !== undefined) {
+        formData.append(key, itemData[key]);
+      }
+    });
+    
+    // Use multipart/form-data content type
+    return api.post('/items', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  } else {
+    // Regular JSON request
+    return api.post('/items', itemData);
+  }
+};
 export const updateItem = (id, itemData) => api.put(`/items/${id}`, itemData);
 export const claimItem = (id, action) => {
   // Map actions to API status values
@@ -49,6 +72,7 @@ export const claimItem = (id, action) => {
   return api.put(`/items/${id}/claim`, { newStatus: statusValue });
 };
 export const deleteItem = (id) => api.delete(`/items/${id}`);
+export const deleteItemImage = (itemId, imageId) => api.delete(`/items/${itemId}/images/${imageId}`);
 
 // Categories APIs
 export const getCategories = () => api.get('/categories');
