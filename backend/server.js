@@ -25,7 +25,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Test database connection
+// Test database connection and setup routes
 db.connect()
   .then(client => {
     console.log('Database connected successfully');
@@ -42,13 +42,18 @@ db.connect()
     app.get('/', (req, res) => {
       res.send('Lost and Found API is running');
     });
-    
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
   })
   .catch(err => {
     console.error('Database connection error:', err);
-    process.exit(1); // Exit if database connection fails
   });
+
+// For Vercel deployment
+module.exports = app;
+
+// For local development
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}

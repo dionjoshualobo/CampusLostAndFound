@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+// Use environment-specific API URL
+const API_URL = import.meta.env.PROD 
+  ? '/api'  // Production: use relative path for Vercel routing
+  : 'http://localhost:5000/api';  // Development: use localhost
 
 // Create axios instance
 const api = axios.create({
