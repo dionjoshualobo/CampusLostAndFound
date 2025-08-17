@@ -1,7 +1,20 @@
 # Campus Lost and Found
-A web application for managing lost and found items on campus. Students can report lost items, post found items, and connect with each other to recover lost belongings.
 
-## Features
+A modern web application for managing lost and found items on campus. Students can report lost items, post found items, and connect with each other to recover lost belongings.
+
+## 🏗️ Project Structure
+
+```
+src/
+├── client/          # React frontend application
+└── server/          # Express.js backend API
+docs/               # Project documentation
+scripts/            # Development and deployment scripts
+```
+
+See [PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed documentation.
+
+## ✨ Features
 
 - **User Authentication**: Secure registration and login system
 - **Item Management**: Report lost items or post found items
@@ -11,14 +24,58 @@ A web application for managing lost and found items on campus. Students can repo
 - **Dark Mode**: Toggle between light and dark themes
 - **Responsive Design**: Works on desktop and mobile devices
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-### Backend
+### Frontend (`src/client/`)
+- **React 18** with modern hooks
+- **Vite** for fast development and building
+- **React Router** for client-side routing
+- **Axios** for API communication
+- **Bootstrap** for responsive UI
+
+### Backend (`src/server/`)
 - **Node.js** with Express.js
-- **MySQL** database
+- **PostgreSQL** database (Supabase)
 - **JWT** for authentication
-- **bcryptjs** for password hashing
+- **bcrypt** for password hashing
+- **Multer** for file uploads
 - **express-validator** for input validation
+
+## 🚀 Quick Start
+
+### Option 1: Automated Setup (Recommended)
+```bash
+# Clone the repository
+git clone https://github.com/dionjoshualobo/CampusLostAndFound.git
+cd CampusLostAndFound
+
+# Run the setup script
+chmod +x scripts/setup.sh
+./scripts/setup.sh
+
+# Start development
+npm run dev
+```
+
+### Option 2: Manual Setup
+```bash
+# Install dependencies
+npm run install:all
+
+# Start development servers
+npm run dev              # Both client and server
+npm run dev:client       # Frontend only (port 5173)
+npm run dev:server       # Backend only (port 5000)
+```
+
+### Environment Variables
+Create a `.env` file in `src/server/`:
+```env
+DATABASE_URL=your_postgresql_connection_string
+JWT_SECRET=your_jwt_secret
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
 ### Frontend
 - **React.js** with functional components and hooks

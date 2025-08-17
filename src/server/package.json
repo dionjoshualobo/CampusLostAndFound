@@ -1,7 +1,7 @@
 {
-  "name": "backend",
+  "name": "campus-lost-and-found-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend API for Campus Lost and Found application",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
