@@ -29,7 +29,7 @@ backend/dist/
 *.swp
 *.swo
 
-/temporary
+
 
 # Vercel
 .vercel
