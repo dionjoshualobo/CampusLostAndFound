@@ -201,6 +201,33 @@ The application uses the following main tables:
 4. Test thoroughly
 5. Submit a pull request
 
+## Deployment on Vercel
+
+This project is configured for easy deployment on Vercel as a full-stack application:
+
+### Prerequisites
+- GitHub repository with your code
+- Vercel account
+- Environment variables set up
+
+### Deployment Steps
+1. Go to [vercel.com](https://vercel.com) and sign in
+2. Click "New Project"
+3. Import your GitHub repository
+4. Vercel will automatically detect the configuration from `vercel.json`
+5. Add your environment variables in the Vercel dashboard:
+   - `DATABASE_URL` - Your PostgreSQL database connection string
+   - `JWT_SECRET` - Your JWT secret key
+   - `SUPABASE_URL` - Your Supabase URL (if using Supabase)
+   - `SUPABASE_ANON_KEY` - Your Supabase anonymous key (if using Supabase)
+6. Click "Deploy"
+
+### Important Notes
+- The frontend will be served as static files from `/frontend/dist`
+- The backend API will be available at `/api/*` routes
+- Database connections should use connection pooling for serverless environments
+- Environment variables should be properly configured in Vercel dashboard
+
 ## License
 
 This project is open source and available under the MIT License.
