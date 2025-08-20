@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const authRoutes = require('./routes/auth');
 const itemRoutes = require('./routes/items');
 const userRoutes = require('./routes/users');
@@ -15,6 +16,9 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from React build
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -49,8 +53,14 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-app.get('/', (req, res) => {
-  res.send('Lost and Found API is running');
+// API health check
+app.get('/api', (req, res) => {
+  res.json({ message: 'Lost and Found API is running', status: 'healthy' });
+});
+
+// Serve React app for all non-API routes (SPA routing)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 // For Vercel deployment
