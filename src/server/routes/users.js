@@ -118,10 +118,14 @@ router.put('/profile', auth, async (req, res) => {
       });
     }
     
-    // Check if user exists
-    const userResult = await db.query('SELECT id FROM users WHERE id = $1', [req.user.id]);
+    // Check if user exists using Supabase
+    const { data: existingUser, error: userCheckError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', req.user.id)
+      .single();
     
-    if (userResult.rows.length === 0) {
+    if (userCheckError || !existingUser) {
       return res.status(404).json({ message: 'User not found' });
     }
     
@@ -169,21 +173,40 @@ router.put('/profile', auth, async (req, res) => {
     // Add user ID for the WHERE clause
     updateValues.push(req.user.id);
     
-    // Execute the update
-    const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = $${updateValues.length}`;
-    await db.query(sql, updateValues);
+    // Update user using Supabase
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        name: name.trim(),
+        email: email.trim(),
+        usertype: userType,
+        department: department.trim(),
+        semester: parsedSemester,
+        contactinfo: contactInfo.trim()
+      })
+      .eq('id', req.user.id);
     
-    // Get updated user data with correct column names
-    const result = await db.query(
-      'SELECT id, name, email, usertype, department, semester, contactinfo FROM users WHERE id = $1', 
-      [req.user.id]
-    );
+    if (updateError) {
+      console.error('Error updating user:', updateError);
+      return res.status(500).json({ message: 'Error updating user profile', error: updateError.message });
+    }
+    
+    // Get updated user data using Supabase
+    const { data: updatedUser, error: fetchError } = await supabase
+      .from('users')
+      .select('id, name, email, usertype, department, semester, contactinfo')
+      .eq('id', req.user.id)
+      .single();
+    
+    if (fetchError || !updatedUser) {
+      console.error('Error fetching updated user:', fetchError);
+      return res.status(500).json({ message: 'Profile updated but error fetching data' });
+    }
     
     // Map to frontend expected format
-    const user = result.rows[0];
     const userData = {
-      id: user.id,
-      name: user.name,
+      id: updatedUser.id,
+      name: updatedUser.name,
       email: user.email,
       userType: user.usertype,
       department: user.department,
@@ -210,15 +233,19 @@ router.put('/password', auth, async (req, res) => {
       return res.status(400).json({ message: 'Current and new password are required' });
     }
     
-    // Get user with password
-    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    // Get user with password using Supabase
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', req.user.id)
+      .single();
     
-    if (result.rows.length === 0) {
+    if (fetchError || !user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Validate current password
-    const isMatch = await bcrypt.compare(currentPassword, result.rows[0].passwordhash);
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordhash);
     if (!isMatch) {
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
@@ -227,11 +254,16 @@ router.put('/password', auth, async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(newPassword, salt);
     
-    // Update password
-    await db.query(
-      'UPDATE users SET passwordhash = $1 WHERE id = $2',
-      [passwordHash, req.user.id]
-    );
+    // Update password using Supabase
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ passwordhash: passwordHash })
+      .eq('id', req.user.id);
+    
+    if (updateError) {
+      console.error('Error updating password:', updateError);
+      return res.status(500).json({ message: 'Error updating password', error: updateError.message });
+    }
     
     res.json({ message: 'Password updated successfully' });
   } catch (error) {
@@ -245,18 +277,18 @@ router.get('/contact/:id', auth, async (req, res) => {
   try {
     const userId = req.params.id;
     
-    // Get all user info with correct column names
-    const result = await db.query(`
-      SELECT id, name, email, usertype, department, semester, contactinfo
-      FROM users WHERE id = $1
-    `, [userId]);
+    // Get all user info using Supabase
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('id, name, email, usertype, department, semester, contactinfo')
+      .eq('id', userId)
+      .single();
     
-    if (result.rows.length === 0) {
+    if (fetchError || !user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
     // Map to frontend expected format
-    const user = result.rows[0];
     const userInfo = {
       id: user.id,
       name: user.name,
