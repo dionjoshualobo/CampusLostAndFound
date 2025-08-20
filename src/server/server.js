@@ -7,7 +7,7 @@ const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
 const commentRoutes = require('./routes/comments');
 const notificationRoutes = require('./routes/notifications');
-const db = require('./config/db');
+const supabase = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,27 +25,33 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Test database connection and setup routes
-db.connect()
-  .then(client => {
-    console.log('Database connected successfully');
-    client.release();
-    
-    // Routes
-    app.use('/api/auth', authRoutes);
-    app.use('/api/items', itemRoutes);
-    app.use('/api/users', userRoutes);
-    app.use('/api/categories', categoryRoutes);
-    app.use('/api/comments', commentRoutes);
-    app.use('/api/notifications', notificationRoutes);
-    
-    app.get('/', (req, res) => {
-      res.send('Lost and Found API is running');
-    });
-  })
-  .catch(err => {
-    console.error('Database connection error:', err);
-  });
+// Test Supabase connection and setup routes
+const testSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('categories').select('count', { count: 'exact', head: true });
+    if (error) {
+      console.error('Supabase connection error:', error);
+    } else {
+      console.log('Supabase connected successfully');
+    }
+  } catch (error) {
+    console.error('Supabase connection error:', error);
+  }
+};
+
+testSupabaseConnection();
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/items', itemRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/comments', commentRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+app.get('/', (req, res) => {
+  res.send('Lost and Found API is running');
+});
 
 // For Vercel deployment
 module.exports = app;

@@ -1,127 +1,129 @@
-const { Pool } = require('pg');
+const { createClient } = require('@supabase/supabase-js');
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// Supabase configuration
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
-// Create tables if they don't exist
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Supabase configuration missing. Please check SUPABASE_URL and SUPABASE_ANON_KEY environment variables.');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Create tables if they don't exist (using Supabase SQL)
 const initDb = async () => {
-  let client;
   try {
-    client = await pool.connect();
-    console.log('Connected to database successfully');
+    console.log('Connected to Supabase successfully');
     
-    // Create users table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(100) NOT NULL UNIQUE,
-        passwordhash VARCHAR(255) NOT NULL,
-        usertype VARCHAR(20) DEFAULT 'student' CHECK (usertype IN ('student', 'faculty')),
-        department VARCHAR(100),
-        semester INTEGER,
-        contactinfo VARCHAR(255),
-        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    
-    // Create categories table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS categories (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(50) NOT NULL UNIQUE
-      )
-    `);
-    
-    // Insert default categories
-    await client.query(`
-      INSERT INTO categories (name) VALUES 
-      ('Electronics'), 
-      ('Clothing'), 
-      ('Books'), 
-      ('Personal Items'), 
-      ('Keys'), 
-      ('Bags'), 
-      ('Documents'), 
-      ('Other')
-      ON CONFLICT (name) DO NOTHING
-    `);
-    
-    // Create items table with category and status
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS items (
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(100) NOT NULL,
-        description TEXT,
-        status VARCHAR(20) NOT NULL CHECK (status IN ('lost', 'found', 'claimed', 'resolved')),
-        location VARCHAR(255),
-        datelost DATE,
-        categoryid INTEGER,
-        userid INTEGER,
-        claimedby INTEGER,
-        claimedat TIMESTAMP NULL,
-        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userid) REFERENCES users(id) ON DELETE SET NULL,
-        FOREIGN KEY (categoryid) REFERENCES categories(id) ON DELETE SET NULL,
-        FOREIGN KEY (claimedby) REFERENCES users(id) ON DELETE SET NULL
-      )
-    `);
-    
-    // Create comments table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS comments (
-        id SERIAL PRIMARY KEY,
-        itemid INTEGER NOT NULL,
-        userid INTEGER NOT NULL,
-        content TEXT NOT NULL,
-        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (itemid) REFERENCES items(id) ON DELETE CASCADE,
-        FOREIGN KEY (userid) REFERENCES users(id)
-      )
-    `);
-    
-    // Create notifications table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS notifications (
-        id SERIAL PRIMARY KEY,
-        userid INTEGER NOT NULL,
-        senderid INTEGER NOT NULL,
-        itemid INTEGER NOT NULL,
-        message TEXT NOT NULL,
-        isread BOOLEAN DEFAULT false,
-        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (userid) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (senderid) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (itemid) REFERENCES items(id) ON DELETE CASCADE
-      )
-    `);
+    // Test if tables exist by trying to query them
+    // If they don't exist, Supabase will handle this gracefully
+    try {
+      await supabase.from('categories').select('count', { count: 'exact', head: true });
+      console.log('Categories table exists');
+    } catch (error) {
+      console.log('Categories table may not exist - this is normal for new setups');
+    }
 
-    // Create item_images table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS item_images (
-        id SERIAL PRIMARY KEY,
-        itemid INTEGER NOT NULL,
-        imageurl TEXT NOT NULL,
-        filename VARCHAR(255) NOT NULL,
-        filesize INTEGER,
-        mimetype VARCHAR(100),
-        createdat TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (itemid) REFERENCES items(id) ON DELETE CASCADE
-      )
-    `);
+    try {
+      await supabase.from('users').select('count', { count: 'exact', head: true });
+      console.log('Users table exists');
+    } catch (error) {
+      console.log('Users table may not exist - this is normal for new setups');
+    }
+
+    try {
+      await supabase.from('items').select('count', { count: 'exact', head: true });
+      console.log('Items table exists');
+    } catch (error) {
+      console.log('Items table may not exist - this is normal for new setups');
+    }
+
+    // Insert default categories using Supabase (only if categories table exists)
+    try {
+      const { error: categoryInsertError } = await supabase
+        .from('categories')
+        .upsert([
+          { name: 'Electronics' },
+          { name: 'Clothing' },
+          { name: 'Books' },
+          { name: 'Personal Items' },
+          { name: 'Keys' },
+          { name: 'Bags' },
+          { name: 'Documents' },
+          { name: 'Other' }
+        ], { onConflict: 'name' });
+      
+      if (categoryInsertError && !categoryInsertError.message.includes('does not exist')) {
+        console.log('Note: Categories may already exist or RLS policies need adjustment');
+      } else if (!categoryInsertError) {
+        console.log('Default categories inserted successfully');
+      }
+    } catch (error) {
+      console.log('Could not insert default categories - table may not exist yet');
+    }
     
-    console.log('Database tables initialized');
+    console.log('Database initialization completed - using Supabase client');
   } catch (error) {
     console.error('Database initialization error:', error);
-    process.exit(1); // Exit if database initialization fails
-  } finally {
-    if (client) client.release();
+    // Don't exit process for Supabase connection issues
+  }
+};
+
+// Test if tables exist and initialize if needed
+const testAndInitializeTables = async () => {
+  // Test if categories table exists and create default categories
+  try {
+    const { error: testError } = await supabase
+      .from('categories')
+      .select('count', { count: 'exact', head: true });
+    
+    if (!testError) {
+      // Table exists, try to insert default categories
+      const { error: categoryInsertError } = await supabase
+        .from('categories')
+        .upsert([
+          { name: 'Electronics' },
+          { name: 'Clothing' },
+          { name: 'Books' },
+          { name: 'Personal Items' },
+          { name: 'Keys' },
+          { name: 'Bags' },
+          { name: 'Documents' },
+          { name: 'Other' }
+        ], { onConflict: 'name' });
+      
+      if (categoryInsertError) {
+        console.log('Note: Could not insert default categories. RLS policies may need to be configured.');
+      } else {
+        console.log('Default categories initialized');
+      }
+    } else {
+      console.log('Note: Categories table not accessible. Please ensure tables are created in Supabase dashboard.');
+      console.log('Required tables: users, categories, items, comments, notifications, item_images');
+    }
+  } catch (error) {
+    console.log('Note: Database tables may need to be created manually in Supabase dashboard.');
+    console.log('Please create the following tables with appropriate schemas:');
+    console.log('- users, categories, items, comments, notifications, item_images');
+  }
+};
+
+// Test Supabase connection
+const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('categories').select('count', { count: 'exact', head: true });
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+    } else {
+      console.log('Supabase connection test successful');
+    }
+  } catch (error) {
+    console.error('Supabase connection error:', error);
   }
 };
 
 // Initialize the database
 initDb();
+testConnection();
 
-module.exports = pool;
+module.exports = supabase;

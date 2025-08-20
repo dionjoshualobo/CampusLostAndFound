@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const db = require('../config/db');
+const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 
 // Register a user
@@ -14,10 +14,14 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Please enter all fields' });
     }
     
-    // Check if user exists
-    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    // Check if user exists using Supabase
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
     
-    if (result.rows.length > 0) {
+    if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
     
@@ -25,13 +29,27 @@ router.post('/register', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
     
-    // Insert user into database with all profile fields
-    const insertResult = await db.query(
-      'INSERT INTO users (name, email, passwordHash, usertype, department, semester, contactinfo) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      [name, email, passwordHash, userType || 'student', department || null, semester || null, contactInfo || null]
-    );
+    // Insert user into database with all profile fields using Supabase
+    const { data: newUser, error: insertError } = await supabase
+      .from('users')
+      .insert({
+        name,
+        email,
+        passwordhash: passwordHash,
+        usertype: userType || 'student',
+        department: department || null,
+        semester: semester || null,
+        contactinfo: contactInfo || null
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      console.error('Error creating user:', insertError);
+      return res.status(500).json({ message: 'Error creating user', error: insertError.message });
+    }
     
-    const userId = insertResult.rows[0].id;
+    const userId = newUser.id;
     
     // Create JWT token
     const token = jwt.sign(
@@ -67,14 +85,16 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Please enter all fields' });
     }
     
-    // Check if user exists
-    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    // Check if user exists using Supabase
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
     
-    if (result.rows.length === 0) {
+    if (fetchError || !user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
-    
-    const user = result.rows[0];
     
     // Validate password
     const isMatch = await bcrypt.compare(password, user.passwordhash);
@@ -111,13 +131,16 @@ router.post('/login', async (req, res) => {
 // Get user data
 router.get('/user', auth, async (req, res) => {
   try {
-    const result = await db.query('SELECT id, name, email, usertype, department, semester, contactinfo FROM users WHERE id = $1', [req.user.id]);
+    const { data: user, error: fetchError } = await supabase
+      .from('users')
+      .select('id, name, email, usertype, department, semester, contactinfo')
+      .eq('id', req.user.id)
+      .single();
     
-    if (result.rows.length === 0) {
+    if (fetchError || !user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    const user = result.rows[0];
     res.json({
       id: user.id,
       name: user.name,

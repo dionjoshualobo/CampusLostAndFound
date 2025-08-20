@@ -1,30 +1,50 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 
 // Get all notifications for the current user
 router.get('/', auth, async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT 
-        n.id,
-        n.userid as "userId",
-        n.senderid as "senderId", 
-        n.itemid as "itemId",
-        n.message,
-        n.isread as "isRead",
-        n.createdat as "createdAt",
-        u.name as "senderName", 
-        i.title as "itemTitle"
-      FROM notifications n
-      JOIN users u ON n.senderid = u.id
-      JOIN items i ON n.itemid = i.id
-      WHERE n.userid = $1
-      ORDER BY n.createdat DESC
-    `, [req.user.id]);
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select(`
+        id,
+        userid,
+        senderid,
+        itemid,
+        message,
+        isread,
+        createdat,
+        users:senderid (
+          name
+        ),
+        items:itemid (
+          title
+        )
+      `)
+      .eq('userid', req.user.id)
+      .order('createdat', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching notifications:', error);
+      return res.status(500).json({ message: 'Error fetching notifications', error: error.message });
+    }
+
+    // Transform the data to match expected format
+    const transformedNotifications = notifications.map(notification => ({
+      id: notification.id,
+      userId: notification.userid,
+      senderId: notification.senderid,
+      itemId: notification.itemid,
+      message: notification.message,
+      isRead: notification.isread,
+      createdAt: notification.createdat,
+      senderName: notification.users?.name || 'Unknown User',
+      itemTitle: notification.items?.title || 'Unknown Item'
+    }));
     
-    res.json(result.rows);
+    res.json(transformedNotifications);
   } catch (error) {
     console.error('Get notifications error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -34,15 +54,27 @@ router.get('/', auth, async (req, res) => {
 // Mark notification as read
 router.put('/:id/read', auth, async (req, res) => {
   try {
-    // Verify the notification belongs to the user
-    const result = await db.query('SELECT * FROM notifications WHERE id = $1 AND userid = $2', 
-      [req.params.id, req.user.id]);
+    // Verify the notification belongs to the user using Supabase
+    const { data: notification, error: fetchError } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('userid', req.user.id)
+      .single();
     
-    if (result.rows.length === 0) {
+    if (fetchError || !notification) {
       return res.status(404).json({ message: 'Notification not found' });
     }
     
-    await db.query('UPDATE notifications SET isread = true WHERE id = $1', [req.params.id]);
+    const { error: updateError } = await supabase
+      .from('notifications')
+      .update({ isread: true })
+      .eq('id', req.params.id);
+
+    if (updateError) {
+      console.error('Error marking notification as read:', updateError);
+      return res.status(500).json({ message: 'Error updating notification', error: updateError.message });
+    }
     
     res.json({ message: 'Notification marked as read' });
   } catch (error) {

@@ -1,26 +1,42 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 
 // Get comments for an item
 router.get('/item/:itemId', async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT 
-        c.id,
-        c.itemid as "itemId",
-        c.userid as "userId",
-        c.content,
-        c.createdat as "createdAt",
-        u.name as "userName" 
-      FROM comments c
-      JOIN users u ON c.userid = u.id
-      WHERE c.itemid = $1
-      ORDER BY c.createdat DESC
-    `, [req.params.itemId]);
+    const { data: comments, error } = await supabase
+      .from('comments')
+      .select(`
+        id,
+        itemid,
+        userid,
+        content,
+        createdat,
+        users:userid (
+          name
+        )
+      `)
+      .eq('itemid', req.params.itemId)
+      .order('createdat', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching comments:', error);
+      return res.status(500).json({ message: 'Error fetching comments', error: error.message });
+    }
+
+    // Transform the data to match expected format
+    const transformedComments = comments.map(comment => ({
+      id: comment.id,
+      itemId: comment.itemid,
+      userId: comment.userid,
+      content: comment.content,
+      createdAt: comment.createdat,
+      userName: comment.users?.name || 'Unknown User'
+    }));
     
-    res.json(result.rows);
+    res.json(transformedComments);
   } catch (error) {
     console.error('Get comments error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -36,33 +52,65 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'ItemId and content are required' });
     }
     
-    // Check if item exists
-    const itemResult = await db.query('SELECT * FROM items WHERE id = $1', [itemId]);
-    if (itemResult.rows.length === 0) {
+    // Check if item exists using Supabase
+    const { data: item, error: itemError } = await supabase
+      .from('items')
+      .select('*')
+      .eq('id', itemId)
+      .single();
+
+    if (itemError || !item) {
       return res.status(404).json({ message: 'Item not found' });
     }
     
-    // Insert comment
-    const insertResult = await db.query(
-      'INSERT INTO comments (itemid, userid, content) VALUES ($1, $2, $3) RETURNING id',
-      [itemId, req.user.id, content]
-    );
+    // Insert comment using Supabase
+    const { data: newComment, error: insertError } = await supabase
+      .from('comments')
+      .insert({
+        itemid: itemId,
+        userid: req.user.id,
+        content: content
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      console.error('Error creating comment:', insertError);
+      return res.status(500).json({ message: 'Error creating comment', error: insertError.message });
+    }
     
-    // Get the new comment with user info
-    const commentResult = await db.query(`
-      SELECT 
-        c.id,
-        c.itemid as "itemId",
-        c.userid as "userId",
-        c.content,
-        c.createdat as "createdAt",
-        u.name as "userName" 
-      FROM comments c
-      JOIN users u ON c.userid = u.id
-      WHERE c.id = $1
-    `, [insertResult.rows[0].id]);
+    // Get the new comment with user info using Supabase
+    const { data: commentWithUser, error: fetchError } = await supabase
+      .from('comments')
+      .select(`
+        id,
+        itemid,
+        userid,
+        content,
+        createdat,
+        users:userid (
+          name
+        )
+      `)
+      .eq('id', newComment.id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching created comment:', fetchError);
+      return res.status(201).json({ id: newComment.id, message: 'Comment created successfully' });
+    }
+
+    // Transform the data to match expected format
+    const transformedComment = {
+      id: commentWithUser.id,
+      itemId: commentWithUser.itemid,
+      userId: commentWithUser.userid,
+      content: commentWithUser.content,
+      createdAt: commentWithUser.createdat,
+      userName: commentWithUser.users?.name || 'Unknown User'
+    };
     
-    res.status(201).json(commentResult.rows[0]);
+    res.status(201).json(transformedComment);
   } catch (error) {
     console.error('Add comment error:', error);
     res.status(500).json({ message: 'Server error' });

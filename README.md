@@ -119,9 +119,142 @@ CampusLostAndFound/
 - npm or yarn
 
 ### Database Setup
-This project uses **Supabase PostgreSQL** as the database backend. The database schema is automatically initialized when you start the backend server.
+
+This project uses **Supabase PostgreSQL** as the database backend. 
 
 **Important:** This project uses a custom authentication system with integer-based user IDs, not Supabase Auth (which uses UUIDs).
+
+#### Supabase Project Setup
+
+1. **Create a Supabase project:**
+   - Go to [supabase.com](https://supabase.com) and create a new account
+   - Create a new project
+   - Note down your project URL and API keys
+
+2. **Create the required database tables:**
+   Since Supabase tables cannot be created programmatically from the client SDK, you need to manually create them using the SQL editor in your Supabase dashboard.
+
+   Go to your Supabase dashboard → SQL Editor → New Query, and run the following SQL commands:
+
+   ```sql
+   -- Create categories table
+   CREATE TABLE categories (
+       id SERIAL PRIMARY KEY,
+       name VARCHAR(255) NOT NULL UNIQUE,
+       description TEXT,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Create users table
+   CREATE TABLE users (
+       id SERIAL PRIMARY KEY,
+       email VARCHAR(255) NOT NULL UNIQUE,
+       password VARCHAR(255) NOT NULL,
+       name VARCHAR(255) NOT NULL,
+       phone VARCHAR(20),
+       student_id VARCHAR(50),
+       profile_completed BOOLEAN DEFAULT FALSE,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Create items table
+   CREATE TABLE items (
+       id SERIAL PRIMARY KEY,
+       title VARCHAR(255) NOT NULL,
+       description TEXT NOT NULL,
+       category_id INTEGER REFERENCES categories(id),
+       user_id INTEGER REFERENCES users(id),
+       status VARCHAR(50) DEFAULT 'active',
+       type VARCHAR(10) CHECK (type IN ('lost', 'found')) NOT NULL,
+       location VARCHAR(255),
+       date_lost_found DATE,
+       contact_info TEXT,
+       reward DECIMAL(10,2),
+       claimed_by INTEGER REFERENCES users(id),
+       resolved BOOLEAN DEFAULT FALSE,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Create item_images table
+   CREATE TABLE item_images (
+       id SERIAL PRIMARY KEY,
+       item_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
+       image_url TEXT NOT NULL,
+       is_primary BOOLEAN DEFAULT FALSE,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Create comments table
+   CREATE TABLE comments (
+       id SERIAL PRIMARY KEY,
+       item_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
+       user_id INTEGER REFERENCES users(id),
+       content TEXT NOT NULL,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Create notifications table
+   CREATE TABLE notifications (
+       id SERIAL PRIMARY KEY,
+       user_id INTEGER REFERENCES users(id),
+       item_id INTEGER REFERENCES items(id),
+       message TEXT NOT NULL,
+       type VARCHAR(50) DEFAULT 'general',
+       is_read BOOLEAN DEFAULT FALSE,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   -- Insert default categories
+   INSERT INTO categories (name, description) VALUES
+   ('Electronics', 'Electronic devices and accessories'),
+   ('Clothing', 'Clothes, shoes, and accessories'),
+   ('Books', 'Books, notebooks, and study materials'),
+   ('Personal Items', 'Wallets, keys, jewelry, etc.'),
+   ('Sports Equipment', 'Sports gear and equipment'),
+   ('Other', 'Items that don''t fit other categories');
+
+   -- Enable Row Level Security (RLS) for better security
+   ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+   ALTER TABLE item_images ENABLE ROW LEVEL SECURITY;
+
+   -- Create RLS policies (adjust as needed for your security requirements)
+   -- Users can read all users but only update their own data
+   CREATE POLICY "Users can view all users" ON users FOR SELECT USING (true);
+   CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid()::text = id::text);
+
+   -- Items are publicly readable, users can only modify their own items
+   CREATE POLICY "Items are publicly readable" ON items FOR SELECT USING (true);
+   CREATE POLICY "Users can insert their own items" ON items FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+   CREATE POLICY "Users can update their own items" ON items FOR UPDATE USING (auth.uid()::text = user_id::text);
+   CREATE POLICY "Users can delete their own items" ON items FOR DELETE USING (auth.uid()::text = user_id::text);
+
+   -- Comments are publicly readable, users can only modify their own comments
+   CREATE POLICY "Comments are publicly readable" ON comments FOR SELECT USING (true);
+   CREATE POLICY "Users can insert their own comments" ON comments FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
+   CREATE POLICY "Users can update their own comments" ON comments FOR UPDATE USING (auth.uid()::text = user_id::text);
+   CREATE POLICY "Users can delete their own comments" ON comments FOR DELETE USING (auth.uid()::text = user_id::text);
+
+   -- Notifications are private to each user
+   CREATE POLICY "Users can view their own notifications" ON notifications FOR SELECT USING (auth.uid()::text = user_id::text);
+   CREATE POLICY "System can create notifications" ON notifications FOR INSERT WITH CHECK (true);
+   CREATE POLICY "Users can update their own notifications" ON notifications FOR UPDATE USING (auth.uid()::text = user_id::text);
+
+   -- Item images follow the same policy as items
+   CREATE POLICY "Item images are publicly readable" ON item_images FOR SELECT USING (true);
+   CREATE POLICY "Users can manage images for their items" ON item_images 
+       FOR ALL USING (EXISTS (SELECT 1 FROM items WHERE items.id = item_images.item_id AND auth.uid()::text = items.user_id::text));
+   ```
+
+3. **Configure Supabase Storage (for image uploads):**
+   - Go to Storage in your Supabase dashboard
+   - Create a new bucket called `item-images`
+   - Set the bucket to public if you want images to be publicly accessible
+   - Configure upload policies as needed
 
 ### Backend Setup
 
@@ -130,22 +263,35 @@ This project uses **Supabase PostgreSQL** as the database backend. The database 
 cd backend
 ```
 
-2. Install dependencies:
+3. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Create a MySQL database for the project
-
-4. Configure environment variables by creating a `.env` file:
+4. Configure environment variables by creating a `.env` file in the backend directory:
 ```env
-DB_HOST=localhost
-DB_USER=your_username
-DB_PASSWORD=your_password
-DB_NAME=campus_lost_found
+# Supabase Configuration
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# JWT Configuration
 JWT_SECRET=your_jwt_secret_key
+
+# Server Configuration
 PORT=5000
+
+# Legacy Database Configuration (not used with Supabase)
+# DB_HOST=localhost
+# DB_USER=your_username
+# DB_PASSWORD=your_password
+# DB_NAME=campus_lost_found
 ```
+
+**How to get your Supabase credentials:**
+1. Go to your Supabase project dashboard
+2. Click on "Settings" → "API"
+3. Copy the "Project URL" for `SUPABASE_URL`
+4. Copy the "anon public" key for `SUPABASE_ANON_KEY`
 
 **Generate a secure JWT secret:**
 - In VS Code, open the terminal (Ctrl+` or Cmd+`)
@@ -155,7 +301,7 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 ```
 - Copy the generated string and use it as your `JWT_SECRET` value
 
-5. Set up the database tables (you'll need to create the schema based on the application requirements)
+5. Ensure your database tables are created following the Supabase setup instructions above.
 
 6. Start the backend server:
 ```bash
@@ -193,12 +339,33 @@ The frontend application will run on `http://localhost:5173`
 
 ## Database Schema
 
-The application uses the following main tables:
+The application uses the following main tables in Supabase PostgreSQL:
 
-- **users**: Store user information and authentication data
-- **categories**: Item categories for organization
-- **items**: Lost and found items with status tracking
-- **notifications**: User notifications for item interactions
+### Core Tables
+- **users**: Store user information and authentication data (custom auth, not Supabase Auth)
+- **categories**: Item categories for organization (Electronics, Clothing, Books, etc.)
+- **items**: Lost and found items with status tracking and location data
+- **item_images**: Image attachments for items with primary image designation
+- **comments**: User comments and interactions on items
+- **notifications**: User notifications for item interactions and updates
+
+### Key Features
+- **Custom Authentication**: Uses integer-based user IDs with bcrypt password hashing
+- **Row Level Security**: Enabled on all tables with appropriate policies
+- **Foreign Key Relationships**: Proper referential integrity between tables
+- **Image Storage**: Supabase storage bucket integration for item photos
+- **Real-time Capabilities**: Built on Supabase's real-time database features
+
+### Database Relationships
+```
+users (1) ←→ (many) items
+users (1) ←→ (many) comments  
+users (1) ←→ (many) notifications
+categories (1) ←→ (many) items
+items (1) ←→ (many) item_images
+items (1) ←→ (many) comments
+items (1) ←→ (many) notifications
+```
 
 ## API Endpoints
 
@@ -273,17 +440,18 @@ This project is configured for easy deployment on Vercel as a full-stack applica
 3. Import your GitHub repository
 4. Vercel will automatically detect the configuration from `vercel.json`
 5. Add your environment variables in the Vercel dashboard:
-   - `DATABASE_URL` - Your PostgreSQL database connection string
+   - `SUPABASE_URL` - Your Supabase project URL
+   - `SUPABASE_ANON_KEY` - Your Supabase anonymous key
    - `JWT_SECRET` - Your JWT secret key
-   - `SUPABASE_URL` - Your Supabase URL (if using Supabase)
-   - `SUPABASE_ANON_KEY` - Your Supabase anonymous key (if using Supabase)
+   - `PORT` - Server port (optional, defaults to 5000)
 6. Click "Deploy"
 
 ### Important Notes
 - The frontend will be served as static files from `/frontend/dist`
 - The backend API will be available at `/api/*` routes
-- Database connections should use connection pooling for serverless environments
+- Uses Supabase PostgreSQL with connection pooling optimized for serverless environments
 - Environment variables should be properly configured in Vercel dashboard
+- Ensure your Supabase project is properly configured with the required tables before deployment
 
 ## License
 

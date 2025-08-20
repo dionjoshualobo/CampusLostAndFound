@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 const { validateItemReport } = require('../middleware/validation');
 const { upload, uploadToSupabase, deleteFromSupabase } = require('../middleware/upload');
@@ -8,45 +8,63 @@ const { upload, uploadToSupabase, deleteFromSupabase } = require('../middleware/
 // Get all items with category info and images
 router.get('/', async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT 
-        i.id,
-        i.title,
-        i.description,
-        i.status,
-        i.location,
-        i.datelost as "dateLost",
-        i.categoryid as "categoryId",
-        i.userid as "userId",
-        i.claimedby as "claimedBy",
-        i.claimedat as "claimedAt",
-        i.createdat as "createdAt",
-        u.name as "userName", 
-        c.name as "categoryName",
-        claimer.name as "claimedByName",
-        COALESCE(
-          JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', img.id,
-              'url', img.imageurl,
-              'filename', img.filename
-            )
-          ) FILTER (WHERE img.id IS NOT NULL),
-          '[]'
-        ) as images
-      FROM items i 
-      LEFT JOIN users u ON i.userid = u.id 
-      LEFT JOIN categories c ON i.categoryid = c.id
-      LEFT JOIN users claimer ON i.claimedby = claimer.id
-      LEFT JOIN item_images img ON i.id = img.itemid
-      GROUP BY i.id, u.name, c.name, claimer.name
-      ORDER BY i.createdat DESC
-    `);
+    // Using Supabase query builder
+    const { data: items, error } = await supabase
+      .from('items')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        location,
+        datelost,
+        categoryid,
+        userid,
+        claimedby,
+        claimedat,
+        createdat,
+        users:userid (
+          name
+        ),
+        categories:categoryid (
+          name
+        ),
+        claimer:claimedby (
+          name
+        ),
+        item_images (
+          id,
+          imageurl,
+          filename
+        )
+      `)
+      .order('createdat', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching items:', error);
+      return res.status(500).json({ message: 'Error fetching items', error: error.message });
+    }
+
+    // Transform the data to match the expected format
+    const transformedItems = items.map(item => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      status: item.status,
+      location: item.location,
+      dateLost: item.datelost,
+      categoryId: item.categoryid,
+      userId: item.userid,
+      claimedBy: item.claimedby,
+      claimedAt: item.claimedat,
+      createdAt: item.createdat,
+      userName: item.users?.name || null,
+      categoryName: item.categories?.name || null,
+      claimedByName: item.claimer?.name || null,
+      images: item.item_images || []
+    }));
     
-    console.log('Returning items:', result.rows.length);
-    console.log('Sample item images:', result.rows[0]?.images);
-    
-    res.json(result.rows);
+    res.json(transformedItems);
   } catch (error) {
     console.error('Get items error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -56,15 +74,35 @@ router.get('/', async (req, res) => {
 // Get statistics
 router.get('/stats', async (req, res) => {
   try {
-    // Get counts by status
-    const result = await db.query(`
-      SELECT status, COUNT(*) as count 
-      FROM items 
-      GROUP BY status
-    `);
+    // Get counts by status using Supabase
+    const { data: statusCounts, error } = await supabase
+      .from('items')
+      .select('status')
+      .then(({ data, error }) => {
+        if (error) return { data: null, error };
+        
+        // Group by status and count
+        const counts = data.reduce((acc, item) => {
+          acc[item.status] = (acc[item.status] || 0) + 1;
+          return acc;
+        }, {});
+        
+        // Convert to array format
+        const statusCounts = Object.entries(counts).map(([status, count]) => ({
+          status,
+          count: count.toString()
+        }));
+        
+        return { data: statusCounts, error: null };
+      });
+
+    if (error) {
+      console.error('Error fetching stats:', error);
+      return res.status(500).json({ message: 'Error fetching stats', error: error.message });
+    }
     
     res.json({
-      statusCounts: result.rows
+      statusCounts: statusCounts || []
     });
   } catch (error) {
     console.error('Get stats error:', error);
@@ -75,46 +113,66 @@ router.get('/stats', async (req, res) => {
 // Get single item with category info and images
 router.get('/:id', async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT 
-        i.id,
-        i.title,
-        i.description,
-        i.status,
-        i.location,
-        i.datelost as "dateLost",
-        i.categoryid as "categoryId",
-        i.userid as "userId",
-        i.claimedby as "claimedBy",
-        i.claimedat as "claimedAt",
-        i.createdat as "createdAt",
-        u.name as "userName", 
-        c.name as "categoryName",
-        claimer.name as "claimedByName",
-        COALESCE(
-          JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', img.id,
-              'url', img.imageurl,
-              'filename', img.filename
-            )
-          ) FILTER (WHERE img.id IS NOT NULL),
-          '[]'
-        ) as images
-      FROM items i 
-      LEFT JOIN users u ON i.userid = u.id 
-      LEFT JOIN categories c ON i.categoryid = c.id
-      LEFT JOIN users claimer ON i.claimedby = claimer.id
-      LEFT JOIN item_images img ON i.id = img.itemid
-      WHERE i.id = $1
-      GROUP BY i.id, u.name, c.name, claimer.name
-    `, [req.params.id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Item not found' });
+    const { data: item, error } = await supabase
+      .from('items')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        location,
+        datelost,
+        categoryid,
+        userid,
+        claimedby,
+        claimedat,
+        createdat,
+        users:userid (
+          name
+        ),
+        categories:categoryid (
+          name
+        ),
+        claimer:claimedby (
+          name
+        ),
+        item_images (
+          id,
+          imageurl,
+          filename
+        )
+      `)
+      .eq('id', req.params.id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      console.error('Error fetching item:', error);
+      return res.status(500).json({ message: 'Error fetching item', error: error.message });
     }
+
+    // Transform the data to match the expected format
+    const transformedItem = {
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      status: item.status,
+      location: item.location,
+      dateLost: item.datelost,
+      categoryId: item.categoryid,
+      userId: item.userid,
+      claimedBy: item.claimedby,
+      claimedAt: item.claimedat,
+      createdAt: item.createdat,
+      userName: item.users?.name || null,
+      categoryName: item.categories?.name || null,
+      claimedByName: item.claimer?.name || null,
+      images: item.item_images || []
+    };
     
-    res.json(result.rows[0]);
+    res.json(transformedItem);
   } catch (error) {
     console.error('Get item error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -143,59 +201,105 @@ router.post('/', auth, upload.single('image'), validateItemReport, async (req, r
       }
     }
     
-    // Create item
-    const result = await db.query(
-      'INSERT INTO items (title, description, status, location, datelost, categoryid, userid) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      [title, description || null, status, location, dateLost, categoryId, req.user.id]
-    );
-    
-    const itemId = result.rows[0].id;
+    // Create item using Supabase
+    const { data: newItem, error: itemError } = await supabase
+      .from('items')
+      .insert({
+        title,
+        description: description || null,
+        status,
+        location,
+        datelost: dateLost,
+        categoryid: categoryId,
+        userid: req.user.id
+      })
+      .select('id')
+      .single();
+
+    if (itemError) {
+      console.error('Error creating item:', itemError);
+      return res.status(500).json({ message: 'Error creating item', error: itemError.message });
+    }
+
+    const itemId = newItem.id;
     
     // Save image data if uploaded
     if (uploadedImageData) {
-      await db.query(
-        'INSERT INTO item_images (itemid, imageurl, filename, filesize, mimetype) VALUES ($1, $2, $3, $4, $5)',
-        [itemId, uploadedImageData.url, uploadedImageData.filename, uploadedImageData.size, uploadedImageData.mimetype]
-      );
+      const { error: imageError } = await supabase
+        .from('item_images')
+        .insert({
+          itemid: itemId,
+          imageurl: uploadedImageData.url,
+          filename: uploadedImageData.filename,
+          filesize: uploadedImageData.size,
+          mimetype: uploadedImageData.mimetype
+        });
+
+      if (imageError) {
+        console.error('Error saving image data:', imageError);
+        // Item was created, but image metadata failed to save
+        // We could optionally delete the uploaded image from storage here
+      }
     }
     
-    // Get the complete item data with images
-    const newItemResult = await db.query(`
-      SELECT 
-        i.id,
-        i.title,
-        i.description,
-        i.status,
-        i.location,
-        i.datelost as "dateLost",
-        i.categoryid as "categoryId",
-        i.userid as "userId",
-        i.claimedby as "claimedBy",
-        i.claimedat as "claimedAt",
-        i.createdat as "createdAt",
-        u.name as "userName", 
-        c.name as "categoryName",
-        claimer.name as "claimedByName",
-        COALESCE(
-          JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'id', img.id,
-              'url', img.imageurl,
-              'filename', img.filename
-            )
-          ) FILTER (WHERE img.id IS NOT NULL),
-          '[]'
-        ) as images
-      FROM items i 
-      LEFT JOIN users u ON i.userid = u.id 
-      LEFT JOIN categories c ON i.categoryid = c.id
-      LEFT JOIN users claimer ON i.claimedby = claimer.id
-      LEFT JOIN item_images img ON i.id = img.itemid
-      WHERE i.id = $1
-      GROUP BY i.id, u.name, c.name, claimer.name
-    `, [itemId]);
+    // Get the complete item data with images using Supabase
+    const { data: newItemData, error: fetchError } = await supabase
+      .from('items')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        location,
+        datelost,
+        categoryid,
+        userid,
+        claimedby,
+        claimedat,
+        createdat,
+        users:userid (
+          name
+        ),
+        categories:categoryid (
+          name
+        ),
+        claimer:claimedby (
+          name
+        ),
+        item_images (
+          id,
+          imageurl,
+          filename
+        )
+      `)
+      .eq('id', itemId)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching created item:', fetchError);
+      return res.status(201).json({ id: itemId, message: 'Item created successfully' });
+    }
+
+    // Transform the data to match the expected format
+    const transformedItem = {
+      id: newItemData.id,
+      title: newItemData.title,
+      description: newItemData.description,
+      status: newItemData.status,
+      location: newItemData.location,
+      dateLost: newItemData.datelost,
+      categoryId: newItemData.categoryid,
+      userId: newItemData.userid,
+      claimedBy: newItemData.claimedby,
+      claimedAt: newItemData.claimedat,
+      createdAt: newItemData.createdat,
+      userName: newItemData.users?.name || null,
+      categoryName: newItemData.categories?.name || null,
+      claimedByName: newItemData.claimer?.name || null,
+      images: newItemData.item_images || []
+    };
     
-    res.status(201).json(newItemResult.rows[0]);
+    res.status(201).json(transformedItem);
   } catch (error) {
     console.error('Create item error:', error);
     
@@ -217,46 +321,101 @@ router.put('/:id', auth, async (req, res) => {
   try {
     const { title, description, status, location, dateLost, categoryId } = req.body;
     
-    // Check if item exists and belongs to user
-    const result = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Item not found' });
+    // Check if item exists and belongs to user using Supabase
+    const { data: existingItem, error: fetchError } = await supabase
+      .from('items')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      console.error('Error fetching item:', fetchError);
+      return res.status(500).json({ message: 'Error fetching item' });
     }
     
-    if (result.rows[0].userid !== req.user.id) {
+    if (existingItem.userid !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to update this item' });
     }
     
-    await db.query(
-      'UPDATE items SET title = $1, description = $2, status = $3, location = $4, datelost = $5, categoryid = $6 WHERE id = $7',
-      [title, description, status, location, dateLost, categoryId, req.params.id]
-    );
+    // Update the item using Supabase
+    const { error: updateError } = await supabase
+      .from('items')
+      .update({
+        title,
+        description,
+        status,
+        location,
+        datelost: dateLost,
+        categoryid: categoryId
+      })
+      .eq('id', req.params.id);
+
+    if (updateError) {
+      console.error('Error updating item:', updateError);
+      return res.status(500).json({ message: 'Error updating item', error: updateError.message });
+    }
     
-    const updatedResult = await db.query(`
-      SELECT 
-        i.id,
-        i.title,
-        i.description,
-        i.status,
-        i.location,
-        i.datelost as "dateLost",
-        i.categoryid as "categoryId",
-        i.userid as "userId",
-        i.claimedby as "claimedBy",
-        i.claimedat as "claimedAt",
-        i.createdat as "createdAt",
-        u.name as "userName", 
-        c.name as "categoryName",
-        claimer.name as "claimedByName"
-      FROM items i 
-      LEFT JOIN users u ON i.userid = u.id 
-      LEFT JOIN categories c ON i.categoryid = c.id
-      LEFT JOIN users claimer ON i.claimedby = claimer.id
-      WHERE i.id = $1
-    `, [req.params.id]);
+    // Get the updated item data with related info
+    const { data: updatedItem, error: updatedFetchError } = await supabase
+      .from('items')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        location,
+        datelost,
+        categoryid,
+        userid,
+        claimedby,
+        claimedat,
+        createdat,
+        users:userid (
+          name
+        ),
+        categories:categoryid (
+          name
+        ),
+        claimer:claimedby (
+          name
+        ),
+        item_images (
+          id,
+          imageurl,
+          filename
+        )
+      `)
+      .eq('id', req.params.id)
+      .single();
+
+    if (updatedFetchError) {
+      console.error('Error fetching updated item:', updatedFetchError);
+      return res.status(500).json({ message: 'Item updated but error fetching data' });
+    }
+
+    // Transform the data to match the expected format
+    const transformedItem = {
+      id: updatedItem.id,
+      title: updatedItem.title,
+      description: updatedItem.description,
+      status: updatedItem.status,
+      location: updatedItem.location,
+      dateLost: updatedItem.datelost,
+      categoryId: updatedItem.categoryid,
+      userId: updatedItem.userid,
+      claimedBy: updatedItem.claimedby,
+      claimedAt: updatedItem.claimedat,
+      createdAt: updatedItem.createdat,
+      userName: updatedItem.users?.name || null,
+      categoryName: updatedItem.categories?.name || null,
+      claimedByName: updatedItem.claimer?.name || null,
+      images: updatedItem.item_images || []
+    };
     
-    res.json(updatedResult.rows[0]);
+    res.json(transformedItem);
   } catch (error) {
     console.error('Update item error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -285,23 +444,32 @@ router.put('/:id/claim', auth, async (req, res) => {
       });
     }
     
-    // Check if item exists
-    const itemResult = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
-    
-    if (itemResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Item not found' });
+    // Check if item exists using Supabase
+    const { data: item, error: itemError } = await supabase
+      .from('items')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (itemError) {
+      if (itemError.code === 'PGRST116') {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      console.error('Error fetching item:', itemError);
+      return res.status(500).json({ message: 'Error fetching item' });
     }
-    
-    const item = itemResult.rows[0];
     
     // Get item owner information
-    const ownerResult = await db.query('SELECT id, name FROM users WHERE id = $1', [item.userid]);
-    
-    if (ownerResult.rows.length === 0) {
+    const { data: owner, error: ownerError } = await supabase
+      .from('users')
+      .select('id, name')
+      .eq('id', item.userid)
+      .single();
+
+    if (ownerError) {
+      console.error('Error fetching owner:', ownerError);
       return res.status(404).json({ message: 'Item owner not found' });
     }
-    
-    const owner = ownerResult.rows[0];
     
     // For 'resolved' status, only the original reporter can resolve
     if (newStatus === 'resolved' && item.userid !== req.user.id) {
@@ -311,8 +479,13 @@ router.put('/:id/claim', auth, async (req, res) => {
     }
     
     // Get current user's name for notifications
-    const userResult = await db.query('SELECT name FROM users WHERE id = $1', [req.user.id]);
-    const userName = userResult.rows.length > 0 ? userResult.rows[0].name : 'A user';
+    const { data: currentUser, error: userError } = await supabase
+      .from('users')
+      .select('name')
+      .eq('id', req.user.id)
+      .single();
+
+    const userName = !userError && currentUser ? currentUser.name : 'A user';
     
     // For 'notify', just record the interest without changing item status
     if (newStatus === 'notify') {
@@ -325,116 +498,107 @@ router.put('/:id/claim', auth, async (req, res) => {
           message = `${userName} says they lost your found item "${item.title}"`;
         }
         
-        // Check if notifications table exists
-        const tableExists = await db.query(`
-          SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = 'notifications'
-          );
-        `);
-        
-        if (tableExists.rows[0].exists) {
-        // Create notification
-          await db.query(
-            'INSERT INTO notifications (userid, senderid, itemid, message) VALUES ($1, $2, $3, $4)',
-            [item.userid, req.user.id, item.id, message]
-          );
+        // Create notification using Supabase
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            userid: item.userid,
+            senderid: req.user.id,
+            itemid: item.id,
+            message: message
+          });
           
-          console.log('Notification created successfully');
+        if (notificationError) {
+          console.error('Error creating notification:', notificationError);
         } else {
-          console.log('Notifications table does not exist, skipping notification');
+          console.log('Notification created successfully');
         }
         
         // Update item with claimedBy info but don't change status
-        await db.query(
-          'UPDATE items SET claimedby = $1, claimedat = NOW() WHERE id = $2',
-          [req.user.id, req.params.id]
-        );
+        const { error: updateError } = await supabase
+          .from('items')
+          .update({
+            claimedby: req.user.id,
+            claimedat: new Date().toISOString()
+          })
+          .eq('id', req.params.id);
         
-        console.log('Item updated with claimedBy info');
+        if (updateError) {
+          console.error('Error updating item with claim info:', updateError);
+        } else {
+          console.log('Item updated with claimedBy info');
+        }
       } catch (err) {
         console.error('Error in notification process:', err);
         // Continue anyway to return the item
       }
       
-      // Get the updated item
-      const updatedResult = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+      // Get the updated item using Supabase
+      const { data: updatedItem, error: fetchError } = await supabase
+        .from('items')
+        .select(`
+          *,
+          users:userid (name),
+          categories:categoryid (name)
+        `)
+        .eq('id', req.params.id)
+        .single();
       
-      // Try to get additional data
-      let fullItemData = { ...updatedResult.rows[0], notificationSent: true };
-      
-      try {
-        // Get user name
-        const userData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].userid]);
-        if (userData.rows.length > 0) {
-          fullItemData.userName = userData.rows[0].name;
-        }
-        
-        // Get category name if applicable
-        if (updatedResult.rows[0].categoryid) {
-          const categoryData = await db.query('SELECT name FROM categories WHERE id = $1', [updatedResult.rows[0].categoryid]);
-          if (categoryData.rows.length > 0) {
-            fullItemData.categoryName = categoryData.rows[0].name;
-          }
-        }
-        
-        // Get claimer name if applicable
-        if (updatedResult.rows[0].claimedby) {
-          const claimerData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].claimedby]);
-          if (claimerData.rows.length > 0) {
-            fullItemData.claimedByName = claimerData.rows[0].name;
-          }
-        }
-      } catch (err) {
-        console.error('Error getting additional item data:', err);
-        // Continue with basic item data
+      if (fetchError) {
+        console.error('Error fetching updated item:', fetchError);
+        return res.status(500).json({ message: 'Item updated but error fetching data' });
       }
+
+      let fullItemData = { 
+        ...updatedItem, 
+        notificationSent: true,
+        userName: updatedItem.users?.name,
+        categoryName: updatedItem.categories?.name
+      };
       
       return res.json(fullItemData);
     }
     
     // For 'resolved' status, update the item status
     console.log('Updating item to resolved status');
-    try {
-      // PostgreSQL supports the resolved status natively since we defined it in the schema
-      await db.query(
-        'UPDATE items SET status = $1, claimedBy = $2, claimedAt = NOW() WHERE id = $3',
-        ['resolved', req.user.id, req.params.id]
-      );
-    } catch (err) {
-      console.error('Error during status update:', err);
-      
-      // Fall back to using 'claimed' instead
-      await db.query(
-        'UPDATE items SET status = $1, claimedBy = $2, claimedAt = NOW() WHERE id = $3',
-        ['claimed', req.user.id, req.params.id]
-      );
+    
+    const { error: resolveError } = await supabase
+      .from('items')
+      .update({
+        status: 'resolved',
+        claimedby: req.user.id,
+        claimedat: new Date().toISOString()
+      })
+      .eq('id', req.params.id);
+    
+    if (resolveError) {
+      console.error('Error during status update:', resolveError);
+      return res.status(500).json({ message: 'Error updating item status', error: resolveError.message });
     }
     
-    // Get the updated item
-    const updatedResult = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+    // Get the updated item using Supabase
+    const { data: finalUpdatedItem, error: finalFetchError } = await supabase
+      .from('items')
+      .select(`
+        *,
+        users:userid (name),
+        categories:categoryid (name),
+        claimer:claimedby (name)
+      `)
+      .eq('id', req.params.id)
+      .single();
     
-    // Try to get additional data
-    let fullItemData = { ...updatedResult.rows[0] };
-    
-    try {
-      // Get user name
-      const userData = await db.query('SELECT name FROM users WHERE id = $1', [updatedResult.rows[0].userid]);
-      if (userData.rows.length > 0) {
-        fullItemData.userName = userData.rows[0].name;
-      }
-      
-      // Get category name if applicable
-      if (updatedResult.rows[0].categoryid) {
-        const categoryData = await db.query('SELECT name FROM categories WHERE id = $1', [updatedResult.rows[0].categoryid]);
-        if (categoryData.rows.length > 0) {
-          fullItemData.categoryName = categoryData.rows[0].name;
-        }
-      }
-    } catch (err) {
-      console.error('Error getting additional item data:', err);
-      // Continue with basic item data
+    if (finalFetchError) {
+      console.error('Error fetching final updated item:', finalFetchError);
+      return res.status(500).json({ message: 'Item updated but error fetching data' });
     }
+
+    let fullItemData = { 
+      ...finalUpdatedItem,
+      userName: finalUpdatedItem.users?.name,
+      categoryName: finalUpdatedItem.categories?.name,
+      claimedByName: finalUpdatedItem.claimer?.name
+    };
     
     console.log('Successfully resolved item');
     res.json(fullItemData);
@@ -450,18 +614,46 @@ router.put('/:id/claim', auth, async (req, res) => {
 // Delete an item (only the creator can delete)
 router.delete('/:id', auth, async (req, res) => {
   try {
-    // Check if item exists and belongs to user
-    const result = await db.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
-    
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Item not found' });
+    // Check if item exists and belongs to user using Supabase
+    const { data: item, error: fetchError } = await supabase
+      .from('items')
+      .select('*')
+      .eq('id', req.params.id)
+      .single();
+
+    if (fetchError) {
+      if (fetchError.code === 'PGRST116') {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      console.error('Error fetching item:', fetchError);
+      return res.status(500).json({ message: 'Error fetching item' });
     }
     
-    if (result.rows[0].userid !== req.user.id) {
+    if (item.userid !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to delete this item' });
     }
     
-    await db.query('DELETE FROM items WHERE id = $1', [req.params.id]);
+    // Delete associated images first
+    const { error: deleteImagesError } = await supabase
+      .from('item_images')
+      .delete()
+      .eq('itemid', req.params.id);
+
+    if (deleteImagesError) {
+      console.error('Error deleting item images:', deleteImagesError);
+      // Continue with item deletion even if image deletion fails
+    }
+    
+    // Delete the item
+    const { error: deleteError } = await supabase
+      .from('items')
+      .delete()
+      .eq('id', req.params.id);
+
+    if (deleteError) {
+      console.error('Error deleting item:', deleteError);
+      return res.status(500).json({ message: 'Error deleting item', error: deleteError.message });
+    }
     
     res.json({ message: 'Item removed' });
   } catch (error) {
@@ -475,28 +667,51 @@ router.delete('/:id/images/:imageId', auth, async (req, res) => {
   try {
     const { id: itemId, imageId } = req.params;
     
-    // Check if item exists and belongs to user
-    const itemResult = await db.query('SELECT userid FROM items WHERE id = $1', [itemId]);
-    
-    if (itemResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Item not found' });
+    // Check if item exists and belongs to user using Supabase
+    const { data: item, error: itemError } = await supabase
+      .from('items')
+      .select('userid')
+      .eq('id', itemId)
+      .single();
+
+    if (itemError) {
+      if (itemError.code === 'PGRST116') {
+        return res.status(404).json({ message: 'Item not found' });
+      }
+      console.error('Error fetching item:', itemError);
+      return res.status(500).json({ message: 'Error fetching item' });
     }
     
-    if (itemResult.rows[0].userid !== req.user.id) {
+    if (item.userid !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to delete this image' });
     }
     
     // Get image data
-    const imageResult = await db.query('SELECT * FROM item_images WHERE id = $1 AND itemid = $2', [imageId, itemId]);
-    
-    if (imageResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Image not found' });
+    const { data: imageData, error: imageError } = await supabase
+      .from('item_images')
+      .select('*')
+      .eq('id', imageId)
+      .eq('itemid', itemId)
+      .single();
+
+    if (imageError) {
+      if (imageError.code === 'PGRST116') {
+        return res.status(404).json({ message: 'Image not found' });
+      }
+      console.error('Error fetching image:', imageError);
+      return res.status(500).json({ message: 'Error fetching image' });
     }
     
-    const imageData = imageResult.rows[0];
-    
     // Delete from database first
-    await db.query('DELETE FROM item_images WHERE id = $1', [imageId]);
+    const { error: deleteError } = await supabase
+      .from('item_images')
+      .delete()
+      .eq('id', imageId);
+
+    if (deleteError) {
+      console.error('Error deleting image from database:', deleteError);
+      return res.status(500).json({ message: 'Error deleting image', error: deleteError.message });
+    }
     
     // Try to delete from Supabase storage
     try {

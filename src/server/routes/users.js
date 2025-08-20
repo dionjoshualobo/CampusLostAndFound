@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/db');
+const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 
@@ -41,17 +41,17 @@ const validateProfileCompletion = (userData) => {
 // Get user profile
 router.get('/profile', auth, async (req, res) => {
   try {
-    const result = await db.query(
-      'SELECT id, name, email, usertype, department, semester, contactinfo, createdat FROM users WHERE id = $1', 
-      [req.user.id]
-    );
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, name, email, usertype, department, semester, contactinfo, createdat')
+      .eq('id', req.user.id)
+      .single();
     
-    if (result.rows.length === 0) {
+    if (error || !user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
     // Map database column names to frontend expectations
-    const user = result.rows[0];
     const userData = {
       id: user.id,
       name: user.name,
@@ -63,18 +63,33 @@ router.get('/profile', auth, async (req, res) => {
       createdAt: user.createdat
     };
 
-    // Get user's items
-    const itemsResult = await db.query(`
-      SELECT i.*, c.name as categoryName
-      FROM items i
-      LEFT JOIN categories c ON i.categoryId = c.id
-      WHERE i.userId = $1
-      ORDER BY i.createdAt DESC
-    `, [req.user.id]);
+    // Get user's items using Supabase
+    const { data: userItems, error: itemsError } = await supabase
+      .from('items')
+      .select(`
+        *,
+        categories:categoryid (
+          name
+        )
+      `)
+      .eq('userid', req.user.id)
+      .order('createdat', { ascending: false });
+
+    if (itemsError) {
+      console.error('Error fetching user items:', itemsError);
+      // Continue without items data
+      userData.items = [];
+    } else {
+      // Transform items data
+      userData.items = userItems.map(item => ({
+        ...item,
+        categoryName: item.categories?.name || null
+      }));
+    }
     
     res.json({
       user: userData,
-      items: itemsResult.rows
+      items: userData.items
     });
   } catch (error) {
     console.error('Get profile error:', error);
