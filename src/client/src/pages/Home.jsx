@@ -77,7 +77,6 @@ const Home = () => {
             <option value="all">All Status</option>
             <option value="lost">Lost</option>
             <option value="found">Found</option>
-            <option value="claimed">Claimed</option>
             <option value="resolved">Resolved</option>
           </select>
         </div>
