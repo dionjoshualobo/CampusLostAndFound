@@ -61,7 +61,11 @@ router.get('/', async (req, res) => {
       userName: item.users?.name || null,
       categoryName: item.categories?.name || null,
       claimedByName: item.claimer?.name || null,
-      images: item.item_images || []
+      images: (item.item_images || []).map(img => ({
+        id: img.id,
+        url: img.imageurl,
+        filename: img.filename
+      }))
     }));
     
     res.json(transformedItems);
@@ -169,7 +173,11 @@ router.get('/:id', async (req, res) => {
       userName: item.users?.name || null,
       categoryName: item.categories?.name || null,
       claimedByName: item.claimer?.name || null,
-      images: item.item_images || []
+      images: (item.item_images || []).map(img => ({
+        id: img.id,
+        url: img.imageurl,
+        filename: img.filename
+      }))
     };
     
     res.json(transformedItem);
@@ -296,7 +304,11 @@ router.post('/', auth, upload.single('image'), validateItemReport, async (req, r
       userName: newItemData.users?.name || null,
       categoryName: newItemData.categories?.name || null,
       claimedByName: newItemData.claimer?.name || null,
-      images: newItemData.item_images || []
+      images: (newItemData.item_images || []).map(img => ({
+        id: img.id,
+        url: img.imageurl,
+        filename: img.filename
+      }))
     };
     
     res.status(201).json(transformedItem);
@@ -412,7 +424,11 @@ router.put('/:id', auth, async (req, res) => {
       userName: updatedItem.users?.name || null,
       categoryName: updatedItem.categories?.name || null,
       claimedByName: updatedItem.claimer?.name || null,
-      images: updatedItem.item_images || []
+      images: (updatedItem.item_images || []).map(img => ({
+        id: img.id,
+        url: img.imageurl,
+        filename: img.filename
+      }))
     };
     
     res.json(transformedItem);
