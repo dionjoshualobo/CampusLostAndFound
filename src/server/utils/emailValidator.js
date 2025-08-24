@@ -4,39 +4,92 @@ const emailConfig = require('../config/emailValidationConfig');
 
 // List of common disposable email domains to block
 const disposableEmailDomains = [
+  // 10-minute emails
   '10minutemail.com',
+  '10minutemail.net',
+  '10minutemail.co.uk',
+  '10minmail.com',
+  '20minutemail.com',
+  '30minutemail.com',
+  
+  // Guerrilla Mail
   'guerrillamail.com',
-  'tempmail.org',
-  'throwaway.email',
-  'temp-mail.org',
-  'mailinator.com',
-  'yopmail.com',
   'guerrillamailblock.com',
-  'sharklasers.com',
-  'grr.la',
   'guerrillamail.net',
   'guerrillamail.org',
   'guerrillamail.biz',
+  'guerrillamail.de',
+  'grr.la',
+  'guerrillamail.info',
+  'pokemail.net',
   'spam4.me',
-  'mail.ru',
-  'hide.biz.st',
-  'mytrashmail.com',
-  'mailnesia.com',
+  'sharklasers.com',
+  
+  // TempMail services
+  'tempmail.org',
+  'temp-mail.org',
+  'tempmail.net',
+  'temp-mail.net',
+  'tempmail.plus',
+  'temp-mail.io',
+  'tempmailo.com',
+  'tempmailaddress.com',
+  'tempemail.com',
+  'tempail.com',
+  'tempinbox.com',
+  
+  // Throwaway emails
+  'throwaway.email',
+  'throwawaymail.com',
   'trashmail.net',
+  'trashmail.com',
+  'trashmail.org',
+  'trashemail.com',
+  'trashmail.at',
+  'trashmail.de',
+  
+  // Mailinator and similar
+  'mailinator.com',
+  'mailinator.net',
+  'mailinator.org',
+  'mailinator2.com',
+  'notmailinator.com',
+  'maildrop.cc',
+  'mailnesia.com',
+  'mailcatch.com',
+  'mailbox.in.ua',
+  
+  // YOPmail
+  'yopmail.com',
+  'yopmail.net',
+  'yopmail.fr',
+  'yopmail.gq',
+  'yom.pl',
+  
+  // Fake/Test domains
   'fakeinbox.com',
+  'fakemail.net',
+  'fake-mail.ml',
+  'fakemailgenerator.com',
   '0-mail.com',
   '027168.com',
   '10mail.org',
   '123-m.com',
+  'example.com',
+  'test.com',
+  'testing.com',
+  
+  // Popular temporary services
   'getnada.com',
   'harakirimail.com',
-  'maildrop.cc',
   'mohmal.com',
   'rootfest.net',
   'spamgourmet.com',
-  'tempail.com',
-  'tempemail.com',
   'dispostable.com',
+  'hide.biz.st',
+  'mytrashmail.com',
+  
+  // International temporary services
   'armyspy.com',
   'cuvox.de',
   'dayrep.com',
@@ -46,7 +99,75 @@ const disposableEmailDomains = [
   'rhyta.com',
   'superrito.com',
   'teleworm.us',
+  
+  // More recent services
+  'minuteinbox.com',
+  'emailondeck.com',
+  'tmailinator.com',
+  'tempmail.ninja',
+  'temp-inbox.com',
+  'disposablemail.com',
+  'spambox.us',
+  'mailexpire.com',
+  'emailtemporanea.net',
+  'correotemporal.org',
+  'mailtothis.com',
+  'shoghlan.com',
+  'anonymbox.com',
+  'emailfake.com',
+  'tempsky.com',
+  'jetable.org',
+  'sogetthis.com',
+  'mailmetrash.com',
+  'no-spam.ws',
+  'emailproxsy.com',
+  'trbvm.com',
+  'spamherelots.com',
+  
   ...emailConfig.ADDITIONAL_DISPOSABLE_DOMAINS
+];
+
+// Patterns that indicate suspicious/fake emails
+const suspiciousPatterns = [
+  // Long random strings
+  /^[a-z]{15,}@/i,                          // 15+ random letters
+  /^[a-z]+[0-9]{8,}@/i,                    // letters followed by 8+ numbers
+  /^[0-9]{8,}[a-z]*@/i,                    // 8+ numbers followed by letters
+  
+  // Test/fake patterns
+  /^(test|fake|dummy|sample|example)[0-9]*@/i,
+  /^(temp|temporary|throw|disposable)[a-z0-9]*@/i,
+  /^(spam|trash|junk|delete)[a-z0-9]*@/i,
+  /^(user|admin|info|contact)[0-9]{5,}@/i,
+  
+  // Keyboard patterns
+  /^(qwerty|asdf|zxcv|1234|abcd|password|qwertyui)[@]/i,
+  /^[a-z]{1}\1{4,}@/i,                     // repeated characters (aaaaa@)
+  
+  // Obviously fake patterns
+  /^(noreply|no-reply|donotreply)[0-9]*@/i,
+  /^(blah|haha|lol|wtf|omg)[0-9]*@/i,
+  /^[a-z]*fuck[a-z]*@/i,
+  /^[a-z]*shit[a-z]*@/i,
+  
+  // Random gibberish patterns
+  /^[bcdfghjklmnpqrstvwxyz]{8,}@/i,        // consonants only
+  /^[aeiou]{5,}@/i,                        // vowels only
+  /^[qxz]{3,}@/i,                          // unlikely letter combinations
+  
+  // Common bot patterns
+  /^bot[0-9]*@/i,
+  /^robot[0-9]*@/i,
+  /^crawler[0-9]*@/i,
+  
+  // Multiple dots or special chars
+  /\.{2,}/,                                // multiple dots
+  /_{3,}/,                                 // multiple underscores
+  /-{3,}/,                                 // multiple dashes
+  
+  // Suspicious academic fakes
+  /^student[0-9]{6,}@/i,                   // student + long numbers
+  /^[0-9]{10,}@.*\.edu/i                   // long student ID patterns
 ];
 
 // Common academic email patterns
@@ -119,6 +240,13 @@ async function validateEmail(email, options = {}) {
   // Check for disposable email
   if (isDisposableEmail(email)) {
     result.reason = 'Disposable email addresses are not allowed';
+    return result;
+  }
+
+  // Check for suspicious/fake email patterns
+  const suspiciousCheck = checkSuspiciousEmail(email);
+  if (suspiciousCheck.isSuspicious) {
+    result.reason = suspiciousCheck.reason;
     return result;
   }
 
@@ -205,8 +333,61 @@ function quickValidateEmail(email) {
     return result;
   }
 
+  // Check for suspicious/fake email patterns
+  const suspiciousCheck = checkSuspiciousEmail(email);
+  if (suspiciousCheck.isSuspicious) {
+    result.reason = suspiciousCheck.reason;
+    return result;
+  }
+
   result.valid = true;
   result.reason = 'Email format is valid';
+  return result;
+}
+
+/**
+ * Checks if email looks suspicious or fake
+ * @param {string} email 
+ * @returns {object}
+ */
+function checkSuspiciousEmail(email) {
+  const result = { 
+    isSuspicious: false, 
+    reason: '',
+    pattern: null
+  };
+  
+  // Check against suspicious patterns
+  for (let i = 0; i < suspiciousPatterns.length; i++) {
+    const pattern = suspiciousPatterns[i];
+    if (pattern.test(email)) {
+      result.isSuspicious = true;
+      result.pattern = pattern.toString();
+      
+      // Provide specific reasons based on pattern type
+      if (pattern.toString().includes('15,')) {
+        result.reason = 'Email appears to contain random character sequence';
+      } else if (pattern.toString().includes('8,')) {
+        result.reason = 'Email appears to be auto-generated';
+      } else if (pattern.toString().includes('test|fake|dummy')) {
+        result.reason = 'Test or fake email addresses are not allowed';
+      } else if (pattern.toString().includes('temp|temporary')) {
+        result.reason = 'Temporary email addresses are not allowed';
+      } else if (pattern.toString().includes('spam|trash|junk')) {
+        result.reason = 'Spam or trash email addresses are not allowed';
+      } else if (pattern.toString().includes('qwerty|asdf')) {
+        result.reason = 'Keyboard pattern email addresses are not allowed';
+      } else if (pattern.toString().includes('noreply|no-reply')) {
+        result.reason = 'No-reply email addresses cannot be used for registration';
+      } else if (pattern.toString().includes('bot|robot|crawler')) {
+        result.reason = 'Bot email addresses are not allowed';
+      } else {
+        result.reason = 'Email appears to be invalid or fake';
+      }
+      break;
+    }
+  }
+  
   return result;
 }
 
@@ -215,5 +396,6 @@ module.exports = {
   quickValidateEmail,
   isValidEmailFormat,
   isDisposableEmail,
-  isAcademicEmail
+  isAcademicEmail,
+  checkSuspiciousEmail
 };
