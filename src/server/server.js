@@ -17,19 +17,20 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// Set proper MIME types for static files
-app.use('/assets', express.static(path.join(__dirname, '../client/dist/assets'), {
+// Serve static files from React build with proper MIME types
+app.use(express.static(path.join(__dirname, '../client/dist'), {
   setHeaders: (res, path) => {
     if (path.endsWith('.js')) {
       res.setHeader('Content-Type', 'application/javascript');
+    } else if (path.endsWith('.mjs')) {
+      res.setHeader('Content-Type', 'application/javascript');
     } else if (path.endsWith('.css')) {
       res.setHeader('Content-Type', 'text/css');
+    } else if (path.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html');
     }
   }
 }));
-
-// Serve static files from React build
-app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Global error handler
 app.use((err, req, res, next) => {

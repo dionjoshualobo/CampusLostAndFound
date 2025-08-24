@@ -1,0 +1,17 @@
+{
+  "name": "campus-lost-and-found",
+  "version": "1.0.0",
+  "description": "Campus Lost and Found Application",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd src/client && npm install && npm run build",
+    "dev": "cd src/client && npm run dev",
+    "start": "cd src/server && npm start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dionjoshualobo/CampusLostAndFound.git"
+  },
+  "author": "Dion Joshua Lobo",
+  "license": "MIT"
+}
