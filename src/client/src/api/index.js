@@ -30,6 +30,7 @@ api.interceptors.request.use(
 // Authentication APIs
 export const register = (userData) => api.post('/auth/register', userData);
 export const login = (credentials) => api.post('/auth/login', credentials);
+export const validateEmail = (email) => api.post('/auth/validate-email', { email });
 export const getUserData = () => api.get('/auth/user');
 
 // User Profile APIs

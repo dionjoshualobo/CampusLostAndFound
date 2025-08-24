@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { register } from '../api';
+import { register, validateEmail } from '../api';
 import { validateContactInfo } from '../utils/profileUtils';
 
 // List of department options
@@ -27,14 +27,70 @@ const Register = ({ login }) => {
   const [error, setError] = useState('');
   const [validationErrors, setValidationErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [emailValidation, setEmailValidation] = useState({
+    isValidating: false,
+    status: '', // 'valid', 'invalid', 'checking'
+    message: '',
+    suggestions: []
+  });
   
   const { name, email, password, confirmPassword, userType, department, semester, contactInfo } = formData;
+
+  // Debounced email validation
+  const validateEmailDebounced = useCallback(async (emailToValidate) => {
+    if (!emailToValidate || emailToValidate.length < 3) {
+      setEmailValidation({ isValidating: false, status: '', message: '', suggestions: [] });
+      return;
+    }
+
+    setEmailValidation({ isValidating: true, status: 'checking', message: 'Checking email...', suggestions: [] });
+
+    try {
+      const response = await validateEmail(emailToValidate);
+      const { valid, message, suggestions = [], isAcademic = false } = response.data;
+      
+      setEmailValidation({
+        isValidating: false,
+        status: valid ? 'valid' : 'invalid',
+        message: message,
+        suggestions: suggestions,
+        isAcademic: isAcademic
+      });
+    } catch (error) {
+      console.error('Email validation error:', error);
+      setEmailValidation({
+        isValidating: false,
+        status: 'invalid',
+        message: 'Unable to validate email',
+        suggestions: []
+      });
+    }
+  }, []);
+
+  // Debounce email validation
+  const debounceTimer = useState(null);
+  const handleEmailValidation = (emailValue) => {
+    if (debounceTimer[0]) {
+      clearTimeout(debounceTimer[0]);
+    }
+    
+    debounceTimer[1](setTimeout(() => {
+      validateEmailDebounced(emailValue);
+    }, 500)); // 500ms delay
+  };
   
   const onChange = e => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name: fieldName, value } = e.target;
+    setFormData({ ...formData, [fieldName]: value });
+    
     // Clear validation error for this field when user starts typing
-    if (validationErrors[e.target.name]) {
-      setValidationErrors({ ...validationErrors, [e.target.name]: '' });
+    if (validationErrors[fieldName]) {
+      setValidationErrors({ ...validationErrors, [fieldName]: '' });
+    }
+
+    // Trigger email validation when email field changes
+    if (fieldName === 'email') {
+      handleEmailValidation(value);
     }
   };
   
@@ -47,8 +103,10 @@ const Register = ({ login }) => {
     
     if (!email.trim()) {
       errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errors.email = 'Please enter a valid email address';
+    } else if (emailValidation.status === 'invalid') {
+      errors.email = emailValidation.message;
+    } else if (emailValidation.status === 'checking') {
+      errors.email = 'Please wait while we validate your email';
     }
     
     if (!password) {
@@ -117,7 +175,27 @@ const Register = ({ login }) => {
       login(response.data.token, response.data.user);
     } catch (err) {
       console.error('Registration error:', err);
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      const errorMessage = err.response?.data?.message || 'Registration failed. Please try again.';
+      const suggestions = err.response?.data?.suggestions || [];
+      
+      if (suggestions.length > 0) {
+        setError(
+          <div>
+            {errorMessage}
+            <div className="mt-2">
+              {suggestions.map((suggestion, index) => (
+                <div key={index} className="text-muted small">
+                  <i className="bi bi-lightbulb me-1"></i>
+                  {suggestion}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      } else {
+        setError(errorMessage);
+      }
+      
       setIsLoading(false);
     }
   };
@@ -152,15 +230,66 @@ const Register = ({ login }) => {
                   
                   <div className="mb-3">
                     <label htmlFor="email" className="form-label">Email Address *</label>
-                    <input
-                      type="email"
-                      className={`form-control ${validationErrors.email ? 'is-invalid' : ''}`}
-                      id="email"
-                      name="email"
-                      value={email}
-                      onChange={onChange}
-                      required
-                    />
+                    <div className="position-relative">
+                      <input
+                        type="email"
+                        className={`form-control ${
+                          validationErrors.email ? 'is-invalid' : 
+                          emailValidation.status === 'valid' ? 'is-valid' :
+                          emailValidation.status === 'invalid' ? 'is-invalid' : ''
+                        }`}
+                        id="email"
+                        name="email"
+                        value={email}
+                        onChange={onChange}
+                        required
+                      />
+                      {emailValidation.isValidating && (
+                        <div className="position-absolute top-50 end-0 translate-middle-y me-3">
+                          <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Validating...</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Email validation feedback */}
+                    {emailValidation.status === 'valid' && (
+                      <div className="valid-feedback d-block">
+                        <i className="bi bi-check-circle me-1"></i>
+                        {emailValidation.message}
+                        {emailValidation.isAcademic && (
+                          <span className="badge bg-success ms-2">Academic Email</span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {emailValidation.status === 'invalid' && !validationErrors.email && (
+                      <div className="invalid-feedback d-block">
+                        <i className="bi bi-exclamation-circle me-1"></i>
+                        {emailValidation.message}
+                        {emailValidation.suggestions.length > 0 && (
+                          <div className="mt-1">
+                            <small>
+                              {emailValidation.suggestions.map((suggestion, index) => (
+                                <div key={index} className="text-muted">
+                                  <i className="bi bi-lightbulb me-1"></i>
+                                  {suggestion}
+                                </div>
+                              ))}
+                            </small>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {emailValidation.status === 'checking' && (
+                      <div className="form-text">
+                        <i className="bi bi-clock me-1"></i>
+                        {emailValidation.message}
+                      </div>
+                    )}
+                    
                     {validationErrors.email && (
                       <div className="invalid-feedback">{validationErrors.email}</div>
                     )}

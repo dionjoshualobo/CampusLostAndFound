@@ -4,6 +4,61 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const supabase = require('../config/db');
 const auth = require('../middleware/auth');
+const { validateEmail, quickValidateEmail } = require('../utils/emailValidator');
+const emailConfig = require('../config/emailValidationConfig');
+
+// Email validation endpoint
+router.post('/validate-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Quick validation for immediate feedback
+    const quickResult = quickValidateEmail(email);
+    if (!quickResult.valid) {
+      return res.json({
+        valid: false,
+        message: quickResult.reason
+      });
+    }
+
+    // Check if email already exists
+    const { data: existingUser, error: checkError } = await supabase
+      .from('users')
+      .select('email')
+      .eq('email', email)
+      .single();
+    
+    if (existingUser) {
+      return res.json({
+        valid: false,
+        message: 'Email address is already registered'
+      });
+    }
+
+    // Comprehensive validation
+    const validationResult = await validateEmail(email, {
+      campusOnly: emailConfig.CAMPUS_ONLY_MODE
+    });
+
+    res.json({
+      valid: validationResult.valid,
+      message: validationResult.reason,
+      suggestions: validationResult.suggestions || [],
+      isAcademic: validationResult.isAcademic || false
+    });
+
+  } catch (error) {
+    console.error('Email validation error:', error);
+    res.status(500).json({ 
+      valid: false,
+      message: 'Unable to validate email at this time' 
+    });
+  }
+});
 
 // Register a user
 router.post('/register', async (req, res) => {
@@ -12,6 +67,18 @@ router.post('/register', async (req, res) => {
     
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Please enter all fields' });
+    }
+
+    // Validate email before proceeding
+    const emailValidation = await validateEmail(email, {
+      campusOnly: emailConfig.CAMPUS_ONLY_MODE
+    });
+
+    if (!emailValidation.valid) {
+      return res.status(400).json({ 
+        message: emailValidation.reason,
+        suggestions: emailValidation.suggestions || []
+      });
     }
     
     // Check if user exists using Supabase
