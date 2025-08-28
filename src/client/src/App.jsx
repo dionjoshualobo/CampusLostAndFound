@@ -7,6 +7,7 @@ import AuthCallback from './pages/AuthCallback';
 import ItemForm from './pages/ItemForm';
 import ItemDetails from './pages/ItemDetails';
 import Profile from './pages/Profile';
+import Test from './pages/Test';
 import { supabase } from './config/supabase';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
