@@ -25,9 +25,9 @@ export const getItems = async () => {
 
     if (itemsError) throw itemsError;
 
-    // Get all profiles to map names
+    // Get all users to map names
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
+      .from('users')
       .select('id, name');
 
     if (profilesError) throw profilesError;
@@ -104,7 +104,7 @@ export const getItem = async (id) => {
 
     // Get user info
     const { data: user, error: userError } = await supabase
-      .from('profiles')
+      .from('users')
       .select('id, name')
       .eq('id', item.userid)
       .single();
@@ -120,7 +120,7 @@ export const getItem = async (id) => {
     let claimer = null;
     if (item.claimedby) {
       const { data: claimerData } = await supabase
-        .from('profiles')
+        .from('users')
         .select('id, name')
         .eq('id', item.claimedby)
         .single();
@@ -175,10 +175,10 @@ export const getItemComments = async (itemId) => {
 
     if (commentsError) throw commentsError;
 
-    // Get all profiles for comment authors
+    // Get all users for comment authors
     const userIds = [...new Set(comments.map(comment => comment.userid))];
     const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
+      .from('users')
       .select('id, name')
       .in('id', userIds);
 
@@ -223,7 +223,7 @@ export const addComment = async (commentData) => {
 
     // Get user name for the response
     const { data: userData } = await supabase
-      .from('profiles')
+      .from('users')
       .select('name')
       .eq('id', user.id)
       .single();
@@ -270,7 +270,7 @@ export const getUserProfile = async () => {
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
-      .from('profiles')
+      .from('users')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -302,7 +302,7 @@ export const getUserProfile = async () => {
       department: data.department,
       semester: data.semester,
       contactInfo: data.contactinfo,
-      createdAt: data.created_at
+      createdAt: data.createdat
     };
 
     const items = (userItems || []).map(item => ({
@@ -326,20 +326,39 @@ export const updateUserProfile = async (profileData) => {
     if (!user) throw new Error('Not authenticated');
 
     const { error } = await supabase
-      .from('profiles')
+      .from('users')
       .update({
         name: profileData.name,
         usertype: profileData.userType,
         department: profileData.department,
         semester: profileData.semester,
-        contactinfo: profileData.contactInfo,
-        profile_completed: true
+        contactinfo: profileData.contactInfo
       })
       .eq('id', user.id);
 
     if (error) throw error;
 
-    return createResponse({ message: 'Profile updated successfully' });
+    // Fetch the updated user data
+    const { data: updatedUser, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Return the updated user data in the expected format
+    const userData = {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      userType: updatedUser.usertype,
+      department: updatedUser.department,
+      semester: updatedUser.semester,
+      contactInfo: updatedUser.contactinfo
+    };
+
+    return createResponse(userData);
   } catch (error) {
     console.error('Error updating profile:', error);
     return createResponse(null, error);
@@ -369,7 +388,7 @@ export const getUserData = async () => {
 export const getUserContact = async (userId) => {
   try {
     const { data, error } = await supabase
-      .from('profiles')
+      .from('users')
       .select('id, name, email, contactinfo')
       .eq('id', userId)
       .single();
@@ -513,12 +532,12 @@ export const getNotifications = async () => {
 
     if (error) throw error;
 
-    // Get all profiles and items for notifications
+    // Get all users and items for notifications
     const senderIds = [...new Set(data.map(n => n.senderid).filter(Boolean))];
     const itemIds = [...new Set(data.map(n => n.itemid).filter(Boolean))];
 
     const { data: profiles } = await supabase
-      .from('profiles')
+      .from('users')
       .select('id, name')
       .in('id', senderIds);
 
