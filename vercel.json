@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "buildCommand": "cd src/client && npm run build",
+  "buildCommand": "cd src/server && npm run build:client",
   "outputDirectory": "src/client/dist",
   "framework": "vite",
-  "installCommand": "cd src/client && npm install",
-  "devCommand": "cd src/client && npm run dev",
+  "installCommand": "cd src/server && npm run install:client",
+  "devCommand": "cd src/server && npm run dev:client",
   "rewrites": [
     {
       "source": "/(.*)",
