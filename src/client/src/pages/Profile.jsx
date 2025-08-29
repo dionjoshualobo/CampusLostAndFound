@@ -59,7 +59,7 @@ const Profile = () => {
         const response = await getUserProfile();
         
         setProfileData({
-          name: response.data.user.name,
+          name: response.data.user.name || '',
           email: response.data.user.email || '',
           userType: response.data.user.userType || 'student',
           department: response.data.user.department || '',
@@ -67,6 +67,12 @@ const Profile = () => {
           contactInfo: response.data.user.contactInfo || ''
         });
         setUserItems(response.data.items);
+        
+        // Check if profile is complete when loaded
+        if (isProfileComplete(response.data.user)) {
+          setShowCompletionAlert(false);
+        }
+        
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching profile:', err);
