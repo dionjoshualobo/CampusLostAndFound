@@ -1,0 +1,11 @@
+{
+  "name": "campus-lost-and-found",
+  "version": "1.0.0",
+  "description": "Campus Lost and Found Platform",
+  "scripts": {
+    "build": "cd src/client && npm run build",
+    "dev": "cd src/client && npm run dev",
+    "install": "cd src/client && npm install"
+  },
+  "private": true
+}
