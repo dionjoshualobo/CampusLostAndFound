@@ -1,8 +1,178 @@
 # Campus Lost and Found
 
-A modern web application for managing lost and found items on campus. Students can report lost items, post found items, and connect with each other to recover lost belongings.
+A full-stack web application for managing lost and found items on campus, built with React, Node.js, and Supabase.
 
-## 🏗️ Project Structure
+## Features
+
+- 🔐 **OAuth2 Authentication** with Google via Supabase Auth
+- 📱 **Responsive Design** with Bootstrap
+- 🔍 **Item Search and Filter** functionality
+- 💬 **Comments System** for item discussions
+- 🔔 **Real-time Notifications**
+- 👤 **User Profiles** with department and contact info
+- 📸 **Image Upload** for lost/found items
+- 🏷️ **Category Management**
+
+## Tech Stack
+
+### Frontend
+- **React 18** with Vite
+- **React Router** for navigation
+- **Bootstrap 5** for styling
+- **Supabase Client** for authentication and database
+
+### Backend
+- **Node.js** with Express
+- **Supabase** for database and authentication
+- **PostgreSQL** database
+- **JWT** for session management
+
+## Project Structure
+
+```
+CampusLostAndFound/
+├── src/
+│   ├── client/              # React frontend
+│   │   ├── src/
+│   │   │   ├── components/  # React components
+│   │   │   ├── pages/       # Page components
+│   │   │   ├── api/         # API client functions
+│   │   │   ├── config/      # Configuration files
+│   │   │   └── utils/       # Utility functions
+│   │   ├── public/          # Static assets
+│   │   ├── .env             # Environment variables
+│   │   ├── .env.template    # Environment template
+│   │   └── package.json
+│   └── server/              # Node.js backend
+│       ├── routes/          # Express routes
+│       ├── middleware/      # Express middleware
+│       ├── config/          # Database configuration
+│       ├── .env             # Environment variables
+│       ├── .env.template    # Environment template
+│       └── package.json
+├── README.md
+└── .gitignore
+```
+
+## Setup Instructions
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm or yarn
+- Supabase account
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/dionjoshualobo/CampusLostAndFound.git
+cd CampusLostAndFound
+```
+
+### 2. Environment Configuration
+
+#### Frontend (.env)
+Copy `src/client/.env.template` to `src/client/.env` and fill in your values:
+```env
+VITE_SUPABASE_URL=your_supabase_project_url_here
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+VITE_APP_NAME=Campus Lost and Found
+```
+
+#### Backend (.env)
+Copy `src/server/.env.template` to `src/server/.env` and fill in your values:
+```env
+DATABASE_URL=your_postgresql_connection_string_here
+SUPABASE_URL=your_supabase_project_url_here
+SUPABASE_ANON_KEY=your_supabase_anon_key_here
+JWT_SECRET=your_jwt_secret_here
+PORT=5000
+NODE_ENV=development
+```
+
+### 3. Database Setup
+1. Create a new Supabase project
+2. Enable Google OAuth in Supabase Auth settings
+3. Run the database schema setup in Supabase SQL Editor
+4. Configure Google OAuth2 credentials
+
+### 4. Install Dependencies
+
+#### Install all dependencies (recommended)
+```bash
+cd src/server
+npm run install:all
+```
+
+#### Or install separately
+```bash
+# Frontend dependencies
+cd src/client
+npm install
+
+# Backend dependencies
+cd ../server
+npm install
+```
+
+### 5. Run the Application
+
+#### Development (both frontend and backend)
+```bash
+cd src/server
+npm run dev
+```
+
+#### Run separately
+```bash
+# Frontend only (port 5173)
+cd src/client
+npm run dev
+
+# Backend only (port 5000)
+cd src/server
+npm run dev:server
+```
+
+### 6. Build for Production
+```bash
+cd src/server
+npm run build
+```
+
+## Available Scripts
+
+### Server Package Scripts
+- `npm run dev` - Run both frontend and backend in development
+- `npm run dev:server` - Run backend only
+- `npm run dev:client` - Run frontend only
+- `npm run build` - Build for production
+- `npm run start` - Start production servers
+- `npm run install:all` - Install all dependencies
+
+### Client Package Scripts
+- `npm run dev` - Start Vite development server
+- `npm run build` - Build for production
+- `npm run preview` - Preview production build
+
+## Authentication Flow
+
+1. User clicks "Sign In with Google"
+2. Redirected to Google OAuth2
+3. On success, Supabase automatically creates user profile
+4. User is redirected back to the application
+5. Frontend receives Supabase session token
+6. User can access protected routes and features
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ```
 src/

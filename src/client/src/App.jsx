@@ -2,11 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
+import Auth from './pages/Auth';
+import AuthCallback from './pages/AuthCallback';
 import ItemForm from './pages/ItemForm';
 import ItemDetails from './pages/ItemDetails';
 import Profile from './pages/Profile';
+import Test from './pages/Test';
+import { supabase } from './config/supabase';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -17,30 +19,88 @@ function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   
   useEffect(() => {
-    // Check if user is authenticated on app load
-    const token = localStorage.getItem('token');
-    if (token) {
-      setIsAuthenticated(true);
-      // You could fetch user data here if needed
-      const userData = JSON.parse(localStorage.getItem('user') || '{}');
-      setUser(userData);
-    }
-    
+    // Check for existing Supabase session
+    const checkSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Session check error:', error);
+          setIsLoading(false);
+          return;
+        }
+
+        if (session) {
+          const user = session.user;
+          const userData = {
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+            avatar_url: user.user_metadata?.avatar_url || '',
+            userType: null,
+            department: null,
+            semester: null,
+            contactInfo: null,
+            profile_completed: false
+          };
+
+          setIsAuthenticated(true);
+          setUser(userData);
+          localStorage.setItem('token', session.access_token);
+          localStorage.setItem('user', JSON.stringify(userData));
+        }
+      } catch (err) {
+        console.error('Session check error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkSession();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          const user = session.user;
+          const userData = {
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.full_name || user.user_metadata?.name || '',
+            avatar_url: user.user_metadata?.avatar_url || '',
+            userType: null,
+            department: null,
+            semester: null,
+            contactInfo: null,
+            profile_completed: false
+          };
+
+          setIsAuthenticated(true);
+          setUser(userData);
+          localStorage.setItem('token', session.access_token);
+          localStorage.setItem('user', JSON.stringify(userData));
+        } else if (event === 'SIGNED_OUT') {
+          setIsAuthenticated(false);
+          setUser(null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+    );
+
     // Check for saved dark mode preference
     const savedDarkMode = localStorage.getItem('darkMode');
     if (savedDarkMode) {
       const isDark = JSON.parse(savedDarkMode);
       setIsDarkMode(isDark);
-      // Apply theme immediately
       document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     } else {
-      // Check system preference
       const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       setIsDarkMode(prefersDark);
       document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
     }
-    
-    setIsLoading(false);
+
+    return () => subscription.unsubscribe();
   }, []);
   
   // Listen for system theme changes
@@ -72,11 +132,18 @@ function App() {
     setUser(userData);
   };
   
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsAuthenticated(false);
-    setUser(null);
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      // State cleanup happens in the onAuthStateChange listener
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Fallback cleanup
+      setIsAuthenticated(false);
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
   };
   
   const toggleDarkMode = () => {
@@ -108,21 +175,29 @@ function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route 
+              path="/auth" 
+              element={isAuthenticated ? <Navigate to="/" /> : <Auth />} 
+            />
+            <Route 
+              path="/auth/callback" 
+              element={<AuthCallback login={login} />} 
+            />
+            <Route 
               path="/login" 
-              element={isAuthenticated ? <Navigate to="/" /> : <Login login={login} />} 
+              element={<Navigate to="/auth" replace />} 
             />
             <Route 
               path="/register" 
-              element={isAuthenticated ? <Navigate to="/" /> : <Register login={login} />} 
+              element={<Navigate to="/auth" replace />} 
             />
             <Route 
               path="/items/new" 
-              element={isAuthenticated ? <ItemForm /> : <Navigate to="/login" />} 
+              element={isAuthenticated ? <ItemForm /> : <Navigate to="/auth" />} 
             />
             <Route path="/items/:id" element={<ItemDetails />} />
             <Route 
               path="/profile" 
-              element={isAuthenticated ? <Profile /> : <Navigate to="/login" />} 
+              element={isAuthenticated ? <Profile /> : <Navigate to="/auth" />} 
             />
           </Routes>
         </div>

@@ -95,11 +95,9 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
               </div>
             ) : (
               <div className="d-flex gap-2">
-                <Link className="btn btn-outline-primary" to="/login">
-                  Login
-                </Link>
-                <Link className="btn btn-primary" to="/register">
-                  Register
+                <Link className="btn btn-primary" to="/auth">
+                  <i className="bi bi-google me-1"></i>
+                  Sign In
                 </Link>
               </div>
             )}
