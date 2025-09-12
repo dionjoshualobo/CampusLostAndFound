@@ -104,11 +104,11 @@ class CacheService {
    */
   invalidateItem(itemId) {
     // Clear specific item cache
-    this.clearByPattern(`getItem:${itemId}`);
+    this.clearByPattern(`getItem:[${JSON.stringify(itemId)}`);
     // Clear items list cache (since item might have changed)
     this.clearByPattern('getItems:');
     // Clear item comments cache
-    this.clearByPattern(`getItemComments:${itemId}`);
+    this.clearByPattern(`getItemComments:[${JSON.stringify(itemId)}`);
     // Clear stats cache (status might have changed)
     this.clearByPattern('getItemStats:');
   }
