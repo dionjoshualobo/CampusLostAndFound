@@ -1,4 +1,5 @@
 import { supabase } from '../config/supabase';
+import cacheService from '../utils/cacheService';
 
 // Helper function to transform Supabase responses to match axios format
 const createResponse = (data, error = null) => {
@@ -14,149 +15,164 @@ const createResponse = (data, error = null) => {
   return { data };
 };
 
-// Items APIs
+// Internal function without caching
+const _getItemsFromAPI = async () => {
+  // First get all items
+  const { data: items, error: itemsError } = await supabase
+    .from('items')
+    .select('*')
+    .order('createdat', { ascending: false });
+
+  if (itemsError) throw itemsError;
+
+  // Get all profiles to map names
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, name');
+
+  if (profilesError) throw profilesError;
+
+  // Get all categories to map names
+  const { data: categories, error: categoriesError } = await supabase
+    .from('categories')
+    .select('id, name');
+
+  if (categoriesError) throw categoriesError;
+
+  // Create lookup maps
+  const profileMap = (profiles || []).reduce((map, profile) => {
+    map[profile.id] = profile.name;
+    return map;
+  }, {});
+
+  const categoryMap = (categories || []).reduce((map, category) => {
+    map[category.id] = category.name;
+    return map;
+  }, {});
+
+  // Transform the data to match expected format
+  const transformedItems = (items || []).map(item => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    status: item.status,
+    location: item.location,
+    dateLost: item.datelost,
+    categoryId: item.categoryid,
+    userId: item.userid,
+    claimedBy: item.claimedby,
+    claimedAt: item.claimedat,
+    createdAt: item.createdat,
+    userName: profileMap[item.userid] || null,
+    categoryName: categoryMap[item.categoryid] || null,
+    claimedByName: profileMap[item.claimedby] || null,
+    images: [] // We'll handle images separately if needed
+  }));
+
+  return createResponse(transformedItems);
+};
+
+// Items APIs with caching
 export const getItems = async () => {
   try {
-    // First get all items
-    const { data: items, error: itemsError } = await supabase
-      .from('items')
-      .select('*')
-      .order('createdat', { ascending: false });
-
-    if (itemsError) throw itemsError;
-
-    // Get all profiles to map names
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, name');
-
-    if (profilesError) throw profilesError;
-
-    // Get all categories to map names
-    const { data: categories, error: categoriesError } = await supabase
-      .from('categories')
-      .select('id, name');
-
-    if (categoriesError) throw categoriesError;
-
-    // Create lookup maps
-    const profileMap = (profiles || []).reduce((map, profile) => {
-      map[profile.id] = profile.name;
-      return map;
-    }, {});
-
-    const categoryMap = (categories || []).reduce((map, category) => {
-      map[category.id] = category.name;
-      return map;
-    }, {});
-
-    // Transform the data to match expected format
-    const transformedItems = (items || []).map(item => ({
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      status: item.status,
-      location: item.location,
-      dateLost: item.datelost,
-      categoryId: item.categoryid,
-      userId: item.userid,
-      claimedBy: item.claimedby,
-      claimedAt: item.claimedat,
-      createdAt: item.createdat,
-      userName: profileMap[item.userid] || null,
-      categoryName: categoryMap[item.categoryid] || null,
-      claimedByName: profileMap[item.claimedby] || null,
-      images: [] // We'll handle images separately if needed
-    }));
-
-    return createResponse(transformedItems);
+    return await cacheService.withCache('getItems', _getItemsFromAPI, [], 3 * 60 * 1000); // 3 minutes cache
   } catch (error) {
     console.error('Error fetching items:', error);
     return createResponse(null, error);
   }
 };
 
+// Internal function without caching
+const _getCategoriesFromAPI = async () => {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('name');
+
+  if (error) throw error;
+  return createResponse(data || []);
+};
+
 export const getCategories = async () => {
   try {
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name');
-
-    if (error) throw error;
-    return createResponse(data || []);
+    return await cacheService.withCache('getCategories', _getCategoriesFromAPI, [], 10 * 60 * 1000); // 10 minutes cache
   } catch (error) {
     console.error('Error fetching categories:', error);
     return createResponse(null, error);
   }
 };
 
-export const getItem = async (id) => {
-  try {
-    // Get the item
-    const { data: item, error: itemError } = await supabase
-      .from('items')
-      .select('*')
-      .eq('id', id)
-      .single();
+// Internal function without caching
+const _getItemFromAPI = async (id) => {
+  // Get the item
+  const { data: item, error: itemError } = await supabase
+    .from('items')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-    if (itemError) throw itemError;
+  if (itemError) throw itemError;
 
-    // Get user info
-    const { data: user, error: userError } = await supabase
+  // Get user info
+  const { data: user, error: userError } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .eq('id', item.userid)
+    .single();
+
+  // Get category info
+  const { data: category, error: categoryError } = await supabase
+    .from('categories')
+    .select('id, name')
+    .eq('id', item.categoryid)
+    .single();
+
+  // Get claimer info if claimed
+  let claimer = null;
+  if (item.claimedby) {
+    const { data: claimerData } = await supabase
       .from('profiles')
       .select('id, name')
-      .eq('id', item.userid)
+      .eq('id', item.claimedby)
       .single();
+    claimer = claimerData;
+  }
 
-    // Get category info
-    const { data: category, error: categoryError } = await supabase
-      .from('categories')
-      .select('id, name')
-      .eq('id', item.categoryid)
-      .single();
+  // Get item images
+  const { data: images } = await supabase
+    .from('item_images')
+    .select('id, imageurl, filename')
+    .eq('itemid', id);
 
-    // Get claimer info if claimed
-    let claimer = null;
-    if (item.claimedby) {
-      const { data: claimerData } = await supabase
-        .from('profiles')
-        .select('id, name')
-        .eq('id', item.claimedby)
-        .single();
-      claimer = claimerData;
-    }
+  // Transform single item
+  const transformedItem = {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    status: item.status,
+    location: item.location,
+    dateLost: item.datelost,
+    categoryId: item.categoryid,
+    userId: item.userid,
+    claimedBy: item.claimedby,
+    claimedAt: item.claimedat,
+    createdAt: item.createdat,
+    userName: user?.name || null,
+    categoryName: category?.name || null,
+    claimedByName: claimer?.name || null,
+    images: (images || []).map(img => ({
+      id: img.id,
+      url: img.imageurl,
+      filename: img.filename
+    }))
+  };
 
-    // Get item images
-    const { data: images } = await supabase
-      .from('item_images')
-      .select('id, imageurl, filename')
-      .eq('itemid', id);
+  return createResponse(transformedItem);
+};
 
-    // Transform single item
-    const transformedItem = {
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      status: item.status,
-      location: item.location,
-      dateLost: item.datelost,
-      categoryId: item.categoryid,
-      userId: item.userid,
-      claimedBy: item.claimedby,
-      claimedAt: item.claimedat,
-      createdAt: item.createdat,
-      userName: user?.name || null,
-      categoryName: category?.name || null,
-      claimedByName: claimer?.name || null,
-      images: (images || []).map(img => ({
-        id: img.id,
-        url: img.imageurl,
-        filename: img.filename
-      }))
-    };
-
-    return createResponse(transformedItem);
+export const getItem = async (id) => {
+  try {
+    return await cacheService.withCache('getItem', _getItemFromAPI, [id], 5 * 60 * 1000); // 5 minutes cache
   } catch (error) {
     console.error('Error fetching item:', error);
     return createResponse(null, error);
@@ -382,28 +398,33 @@ export const getUserContact = async (userId) => {
   }
 };
 
+// Internal function without caching
+const _getItemStatsFromAPI = async () => {
+  const { data, error } = await supabase
+    .from('items')
+    .select('status');
+
+  if (error) throw error;
+
+  // Group by status and count
+  const statusCounts = (data || []).reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Convert to array format expected by Dashboard
+  const statusCountsArray = Object.entries(statusCounts).map(([status, count]) => ({
+    status,
+    count: count.toString()
+  }));
+
+  return createResponse({ statusCounts: statusCountsArray });
+};
+
 // Additional missing functions
 export const getItemStats = async () => {
   try {
-    const { data, error } = await supabase
-      .from('items')
-      .select('status');
-
-    if (error) throw error;
-
-    // Group by status and count
-    const statusCounts = (data || []).reduce((acc, item) => {
-      acc[item.status] = (acc[item.status] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Convert to array format expected by Dashboard
-    const statusCountsArray = Object.entries(statusCounts).map(([status, count]) => ({
-      status,
-      count: count.toString()
-    }));
-
-    return createResponse({ statusCounts: statusCountsArray });
+    return await cacheService.withCache('getItemStats', _getItemStatsFromAPI, [], 2 * 60 * 1000); // 2 minutes cache
   } catch (error) {
     console.error('Error fetching item stats:', error);
     return createResponse(null, error);
@@ -433,6 +454,10 @@ export const createItem = async (itemData) => {
       .single();
 
     if (error) throw error;
+    
+    // Invalidate items list cache since new item was created
+    cacheService.invalidateItems();
+    
     return createResponse(data);
   } catch (error) {
     console.error('Error creating item:', error);
@@ -452,6 +477,10 @@ export const deleteItem = async (itemId) => {
       .eq('userid', user.id);
 
     if (error) throw error;
+    
+    // Invalidate cache for this item and related data
+    cacheService.invalidateItem(itemId);
+    
     return createResponse({ message: 'Item deleted successfully' });
   } catch (error) {
     console.error('Error deleting item:', error);
@@ -474,6 +503,10 @@ export const claimItem = async (itemId) => {
       .eq('id', itemId);
 
     if (error) throw error;
+    
+    // Invalidate cache for this item and related data
+    cacheService.invalidateItem(itemId);
+    
     return createResponse({ message: 'Item claimed successfully' });
   } catch (error) {
     console.error('Error claiming item:', error);
@@ -499,57 +532,62 @@ export const deleteItemImage = async (imageId) => {
   }
 };
 
+// Internal function without caching
+const _getNotificationsFromAPI = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('userid', user.id)
+    .order('createdat', { ascending: false });
+
+  if (error) throw error;
+
+  // Get all profiles and items for notifications
+  const senderIds = [...new Set(data.map(n => n.senderid).filter(Boolean))];
+  const itemIds = [...new Set(data.map(n => n.itemid).filter(Boolean))];
+
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', senderIds);
+
+  const { data: items } = await supabase
+    .from('items')
+    .select('id, title')
+    .in('id', itemIds);
+
+  const profileMap = (profiles || []).reduce((map, profile) => {
+    map[profile.id] = profile.name;
+    return map;
+  }, {});
+
+  const itemMap = (items || []).reduce((map, item) => {
+    map[item.id] = item.title;
+    return map;
+  }, {});
+
+  const transformedNotifications = (data || []).map(notification => ({
+    id: notification.id,
+    userId: notification.userid,
+    senderId: notification.senderid,
+    itemId: notification.itemid,
+    message: notification.message,
+    isRead: notification.isread,
+    createdAt: notification.createdat,
+    senderName: profileMap[notification.senderid] || 'Unknown User',
+    itemTitle: itemMap[notification.itemid] || 'Unknown Item'
+  }));
+
+  return createResponse(transformedNotifications);
+};
+
 // Notifications APIs
 export const getNotifications = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('userid', user.id)
-      .order('createdat', { ascending: false });
-
-    if (error) throw error;
-
-    // Get all profiles and items for notifications
-    const senderIds = [...new Set(data.map(n => n.senderid).filter(Boolean))];
-    const itemIds = [...new Set(data.map(n => n.itemid).filter(Boolean))];
-
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, name')
-      .in('id', senderIds);
-
-    const { data: items } = await supabase
-      .from('items')
-      .select('id, title')
-      .in('id', itemIds);
-
-    const profileMap = (profiles || []).reduce((map, profile) => {
-      map[profile.id] = profile.name;
-      return map;
-    }, {});
-
-    const itemMap = (items || []).reduce((map, item) => {
-      map[item.id] = item.title;
-      return map;
-    }, {});
-
-    const transformedNotifications = (data || []).map(notification => ({
-      id: notification.id,
-      userId: notification.userid,
-      senderId: notification.senderid,
-      itemId: notification.itemid,
-      message: notification.message,
-      isRead: notification.isread,
-      createdAt: notification.createdat,
-      senderName: profileMap[notification.senderid] || 'Unknown User',
-      itemTitle: itemMap[notification.itemid] || 'Unknown Item'
-    }));
-
-    return createResponse(transformedNotifications);
+    return await cacheService.withCache('getNotifications', _getNotificationsFromAPI, [], 2 * 60 * 1000); // 2 minutes cache
   } catch (error) {
     console.error('Error fetching notifications:', error);
     return createResponse(null, error);
@@ -568,6 +606,10 @@ export const markNotificationAsRead = async (notificationId) => {
       .eq('userid', user.id);
 
     if (error) throw error;
+    
+    // Invalidate notifications cache since read status changed
+    cacheService.invalidateNotifications();
+    
     return createResponse({ message: 'Notification marked as read' });
   } catch (error) {
     console.error('Error marking notification as read:', error);
@@ -587,6 +629,10 @@ export const deleteNotification = async (notificationId) => {
       .eq('userid', user.id);
 
     if (error) throw error;
+    
+    // Invalidate notifications cache since notification was deleted
+    cacheService.invalidateNotifications();
+    
     return createResponse({ message: 'Notification deleted successfully' });
   } catch (error) {
     console.error('Error deleting notification:', error);
