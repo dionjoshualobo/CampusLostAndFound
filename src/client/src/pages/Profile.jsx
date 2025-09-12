@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getUserProfile, updateUserProfile, changePassword } from '../api';
 import { formatDate } from '../utils/dateUtils';
@@ -23,6 +23,9 @@ const Profile = () => {
     semester: '',
     contactInfo: ''
   });
+  
+  // Ref to store form data before submit to prevent reset
+  const formDataRef = useRef(null);
   
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -58,24 +61,38 @@ const Profile = () => {
       try {
         const response = await getUserProfile();
         
-        setProfileData({
-          name: response.data.user.name || '',
-          email: response.data.user.email || '',
-          userType: response.data.user.userType || 'student',
-          department: response.data.user.department || '',
-          semester: response.data.user.semester || '',
-          contactInfo: response.data.user.contactInfo || ''
-        });
-        setUserItems(response.data.items);
-        
-        // Check if profile is complete when loaded
-        if (isProfileComplete(response.data.user)) {
-          setShowCompletionAlert(false);
+        // Ensure we have the response data
+        if (response.success && response.data && response.data.user) {
+          const user = response.data.user;
+          
+          setProfileData({
+            name: user.name || '',
+            email: user.email || '',
+            userType: user.userType || 'student',
+            department: user.department || '',
+            semester: user.semester || '',
+            contactInfo: user.contactInfo || ''
+          });
+          setUserItems(response.data.items || []);
+          
+          // Check if profile is complete when loaded
+          if (isProfileComplete(user)) {
+            setShowCompletionAlert(false);
+          }
+        } else {
+          throw new Error('Invalid response structure');
         }
         
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching profile:', err);
+        
+        // If the error is due to authentication, redirect to login
+        if (err.message === 'Not authenticated' || err.message?.includes('auth')) {
+          navigate('/auth');
+          return;
+        }
+        
         setError('Failed to load profile data');
         setIsLoading(false);
       }
@@ -101,7 +118,7 @@ const Profile = () => {
   const validateProfileForm = () => {
     const errors = {};
     
-    if (!profileData.name.trim()) {
+    if (!profileData.name || !profileData.name.trim()) {
       errors.name = 'Name is required';
     }
     
@@ -117,7 +134,7 @@ const Profile = () => {
       errors.semester = 'Semester is required for students';
     }
     
-    if (!profileData.contactInfo.trim()) {
+    if (!profileData.contactInfo || !profileData.contactInfo.trim()) {
       errors.contactInfo = 'Contact information is required';
     } else {
       const contactValidation = validateContactInfo(profileData.contactInfo);
@@ -131,68 +148,29 @@ const Profile = () => {
   
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setValidationErrors({});
     
-    // Validate form
-    const errors = validateProfileForm();
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      setError('Please fix the validation errors below.');
-      return;
-    }
+    // Prevent any form reset by not changing any state that affects form fields
+    // Just handle the API call and show success/error messages
     
-    setIsUpdating(true);
+    const currentFormData = { ...profileData };
     
     try {
-      const response = await updateUserProfile({
-        name: profileData.name,
-        userType: profileData.userType,
-        department: profileData.department,
-        semester: profileData.userType === 'student' ? profileData.semester : null,
-        contactInfo: profileData.contactInfo
+      // Make the API call with current form data
+      await updateUserProfile({
+        name: currentFormData.name,
+        userType: currentFormData.userType,
+        department: currentFormData.department,
+        semester: currentFormData.userType === 'student' ? currentFormData.semester : null,
+        contactInfo: currentFormData.contactInfo
       });
       
-      setProfileData({
-        ...profileData,
-        name: response.data.name,
-        userType: response.data.userType || 'student',
-        department: response.data.department || '',
-        semester: response.data.semester || '',
-        contactInfo: response.data.contactInfo || ''
-      });
+      // Only update non-form-affecting state
+      setSuccess('Profile updated successfully');
+      setError(null);
       
-      // Update localStorage with new user data
-      const updatedUser = {
-        ...JSON.parse(localStorage.getItem('user') || '{}'),
-        ...response.data
-      };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      // Check if profile is now complete
-      if (isProfileComplete(updatedUser)) {
-        setSuccess('Profile updated successfully! You can now access all features.');
-        setShowCompletionAlert(false);
-        
-        // If this was a redirect for completion, show option to go back
-        if (searchParams.get('redirect') === 'true') {
-          setTimeout(() => {
-            const shouldGoBack = window.confirm('Profile completed! Would you like to go back to what you were doing?');
-            if (shouldGoBack) {
-              navigate(-1);
-            }
-          }, 2000);
-        }
-      } else {
-        setSuccess('Profile updated successfully');
-      }
-      
-      setIsUpdating(false);
     } catch (err) {
-      console.error('Error updating profile:', err);
-      setError(err.response?.data?.message || 'Failed to update profile');
-      setIsUpdating(false);
+      setError('Failed to update profile');
+      setSuccess(null);
     }
   };
   
