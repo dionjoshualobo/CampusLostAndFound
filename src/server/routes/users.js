@@ -178,7 +178,6 @@ router.put('/profile', auth, async (req, res) => {
       .from('users')
       .update({
         name: name.trim(),
-        email: email.trim(),
         usertype: userType,
         department: department.trim(),
         semester: parsedSemester,
@@ -207,11 +206,11 @@ router.put('/profile', auth, async (req, res) => {
     const userData = {
       id: updatedUser.id,
       name: updatedUser.name,
-      email: user.email,
-      userType: user.usertype,
-      department: user.department,
-      semester: user.semester,
-      contactInfo: user.contactinfo
+      email: updatedUser.email,
+      userType: updatedUser.usertype,
+      department: updatedUser.department,
+      semester: updatedUser.semester,
+      contactInfo: updatedUser.contactinfo
     };
     
     res.json(userData);
