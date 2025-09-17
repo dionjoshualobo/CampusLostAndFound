@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createItem, getCategories } from '../api';
-import { isProfileComplete } from '../utils/profileUtils';
+import { createItem, getCategories, checkProfileStatus } from '../api';
 import ProfileCompletionModal from '../components/ProfileCompletionModal';
 
 const ItemForm = () => {
@@ -31,12 +30,39 @@ const ItemForm = () => {
     return today.toISOString().split('T')[0];
   };
   
-  // Check profile completion on component mount
+  // Check profile completion on component mount and when window gains focus
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!isProfileComplete(user)) {
-      setShowProfileModal(true);
-    }
+    const checkProfileCompletion = async () => {
+      try {
+        const response = await checkProfileStatus();
+        if (!response.data.profile_completed) {
+          setShowProfileModal(true);
+        } else {
+          setShowProfileModal(false);
+        }
+      } catch (error) {
+        console.error('Error checking profile status:', error);
+        // Fallback to localStorage if API fails
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        if (user.profile_completed !== true) {
+          setShowProfileModal(true);
+        }
+      }
+    };
+
+    // Check on mount
+    checkProfileCompletion();
+
+    // Check when window gains focus (user returns from profile page)
+    const handleFocus = () => {
+      checkProfileCompletion();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   // Cleanup image preview URL when component unmounts
@@ -159,11 +185,21 @@ const ItemForm = () => {
   const onSubmit = async e => {
     e.preventDefault();
     
-    // Check profile completion before submitting
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!isProfileComplete(user)) {
-      setShowProfileModal(true);
-      return;
+    // Check profile completion before submitting using database
+    try {
+      const response = await checkProfileStatus();
+      if (!response.data.profile_completed) {
+        setShowProfileModal(true);
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking profile status:', error);
+      // Fallback to localStorage if API fails
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      if (user.profile_completed !== true) {
+        setShowProfileModal(true);
+        return;
+      }
     }
     
     // Clear previous errors

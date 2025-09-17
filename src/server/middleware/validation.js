@@ -1,4 +1,4 @@
-const db = require('../config/db');
+const supabase = require('../config/db');
 
 const validateItemReport = async (req, res, next) => {
   const { title, description, status, location, dateLost, categoryId } = req.body;
@@ -6,28 +6,21 @@ const validateItemReport = async (req, res, next) => {
 
   // First check if user profile is complete
   try {
-    const result = await db.query(
-      'SELECT name, userType, department, semester, contactInfo FROM users WHERE id = $1',
-      [req.user.id]
-    );
+    const { data: user, error } = await supabase
+      .from('profiles')
+      .select('name, usertype, department, semester, contactinfo, profile_completed')
+      .eq('id', req.user.id)
+      .single();
     
-    if (result.rows.length > 0) {
-      const user = result.rows[0];
-      const profileErrors = [];
-      
-      if (!user.name || user.name.trim() === '') profileErrors.push('Name');
-      if (!user.usertype) profileErrors.push('User Type');
-      if (!user.department || user.department.trim() === '') profileErrors.push('Department');
-      if (!user.contactinfo || user.contactinfo.trim() === '') profileErrors.push('Contact Information');
-      if (user.usertype === 'student' && (!user.semester || user.semester === '')) {
-        profileErrors.push('Semester');
-      }
-      
-      if (profileErrors.length > 0) {
+    if (user && !error) {
+      // If profile_completed is explicitly true, allow access
+      if (user.profile_completed === true) {
+        // Profile is marked as complete, continue with validation
+      } else {
+        // Profile is not complete (false, null, or undefined)
         return res.status(400).json({
           success: false,
           message: 'Profile completion required. Please complete your profile first.',
-          missingProfileFields: profileErrors,
           requiresProfileCompletion: true
         });
       }

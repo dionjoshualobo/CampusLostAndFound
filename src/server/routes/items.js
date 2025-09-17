@@ -23,13 +23,13 @@ router.get('/', async (req, res) => {
         claimedby,
         claimedat,
         createdat,
-        users:userid (
+        profiles:userid (
           name
         ),
         categories:categoryid (
           name
         ),
-        claimer:claimedby (
+        claimer_profile:claimedby (
           name
         ),
         item_images (
@@ -58,9 +58,9 @@ router.get('/', async (req, res) => {
       claimedBy: item.claimedby,
       claimedAt: item.claimedat,
       createdAt: item.createdat,
-      userName: item.users?.name || null,
+      userName: item.profiles?.name || null,
       categoryName: item.categories?.name || null,
-      claimedByName: item.claimer?.name || null,
+      claimedByName: item.claimer_profile?.name || null,
       images: (item.item_images || []).map(img => ({
         id: img.id,
         url: img.imageurl,
@@ -131,13 +131,13 @@ router.get('/:id', async (req, res) => {
         claimedby,
         claimedat,
         createdat,
-        users:userid (
+        profiles:userid (
           name
         ),
         categories:categoryid (
           name
         ),
-        claimer:claimedby (
+        claimer_profile:claimedby (
           name
         ),
         item_images (
@@ -170,9 +170,9 @@ router.get('/:id', async (req, res) => {
       claimedBy: item.claimedby,
       claimedAt: item.claimedat,
       createdAt: item.createdat,
-      userName: item.users?.name || null,
+      userName: item.profiles?.name || null,
       categoryName: item.categories?.name || null,
-      claimedByName: item.claimer?.name || null,
+      claimedByName: item.claimer_profile?.name || null,
       images: (item.item_images || []).map(img => ({
         id: img.id,
         url: img.imageurl,
@@ -265,13 +265,13 @@ router.post('/', auth, upload.single('image'), validateItemReport, async (req, r
         claimedby,
         claimedat,
         createdat,
-        users:userid (
+        profiles:userid (
           name
         ),
         categories:categoryid (
           name
         ),
-        claimer:claimedby (
+        claimer_profile:claimedby (
           name
         ),
         item_images (
@@ -301,9 +301,9 @@ router.post('/', auth, upload.single('image'), validateItemReport, async (req, r
       claimedBy: newItemData.claimedby,
       claimedAt: newItemData.claimedat,
       createdAt: newItemData.createdat,
-      userName: newItemData.users?.name || null,
+      userName: newItemData.profiles?.name || null,
       categoryName: newItemData.categories?.name || null,
-      claimedByName: newItemData.claimer?.name || null,
+      claimedByName: newItemData.claimer_profile?.name || null,
       images: (newItemData.item_images || []).map(img => ({
         id: img.id,
         url: img.imageurl,
@@ -385,13 +385,13 @@ router.put('/:id', auth, async (req, res) => {
         claimedby,
         claimedat,
         createdat,
-        users:userid (
+        profiles:userid (
           name
         ),
         categories:categoryid (
           name
         ),
-        claimer:claimedby (
+        claimer_profile:claimedby (
           name
         ),
         item_images (
@@ -421,9 +421,9 @@ router.put('/:id', auth, async (req, res) => {
       claimedBy: updatedItem.claimedby,
       claimedAt: updatedItem.claimedat,
       createdAt: updatedItem.createdat,
-      userName: updatedItem.users?.name || null,
+      userName: updatedItem.profiles?.name || null,
       categoryName: updatedItem.categories?.name || null,
-      claimedByName: updatedItem.claimer?.name || null,
+      claimedByName: updatedItem.claimer_profile?.name || null,
       images: (updatedItem.item_images || []).map(img => ({
         id: img.id,
         url: img.imageurl,
@@ -477,7 +477,7 @@ router.put('/:id/claim', auth, async (req, res) => {
     
     // Get item owner information
     const { data: owner, error: ownerError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id, name')
       .eq('id', item.userid)
       .single();
@@ -496,7 +496,7 @@ router.put('/:id/claim', auth, async (req, res) => {
     
     // Get current user's name for notifications
     const { data: currentUser, error: userError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('name')
       .eq('id', req.user.id)
       .single();
@@ -554,7 +554,7 @@ router.put('/:id/claim', auth, async (req, res) => {
         .from('items')
         .select(`
           *,
-          users:userid (name),
+          profiles:userid (name),
           categories:categoryid (name)
         `)
         .eq('id', req.params.id)
@@ -568,7 +568,7 @@ router.put('/:id/claim', auth, async (req, res) => {
       let fullItemData = { 
         ...updatedItem, 
         notificationSent: true,
-        userName: updatedItem.users?.name,
+        userName: updatedItem.profiles?.name,
         categoryName: updatedItem.categories?.name
       };
       
@@ -597,9 +597,9 @@ router.put('/:id/claim', auth, async (req, res) => {
       .from('items')
       .select(`
         *,
-        users:userid (name),
+        profiles:userid (name),
         categories:categoryid (name),
-        claimer:claimedby (name)
+        claimer_profile:claimedby (name)
       `)
       .eq('id', req.params.id)
       .single();
@@ -611,9 +611,9 @@ router.put('/:id/claim', auth, async (req, res) => {
 
     let fullItemData = { 
       ...finalUpdatedItem,
-      userName: finalUpdatedItem.users?.name,
+      userName: finalUpdatedItem.profiles?.name,
       categoryName: finalUpdatedItem.categories?.name,
-      claimedByName: finalUpdatedItem.claimer?.name
+      claimedByName: finalUpdatedItem.claimer_profile?.name
     };
     
     console.log('Successfully resolved item');

@@ -16,7 +16,7 @@ router.get('/', auth, async (req, res) => {
         message,
         isread,
         createdat,
-        users:senderid (
+        profiles:senderid (
           name
         ),
         items:itemid (
@@ -40,7 +40,7 @@ router.get('/', auth, async (req, res) => {
       message: notification.message,
       isRead: notification.isread,
       createdAt: notification.createdat,
-      senderName: notification.users?.name || 'Unknown User',
+      senderName: notification.profiles?.name || 'Unknown User',
       itemTitle: notification.items?.title || 'Unknown Item'
     }));
     

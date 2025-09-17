@@ -366,6 +366,27 @@ export const getUserData = async () => {
   }
 };
 
+export const checkProfileStatus = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('profile_completed')
+      .eq('id', user.id)
+      .single();
+    
+    if (error) throw error;
+    
+    return createResponse({ 
+      profile_completed: profile?.profile_completed || false 
+    });
+  } catch (error) {
+    return createResponse(null, error);
+  }
+};
+
 export const getUserContact = async (userId) => {
   try {
     const { data, error } = await supabase
@@ -592,9 +613,4 @@ export const deleteNotification = async (notificationId) => {
     console.error('Error deleting notification:', error);
     return createResponse(null, error);
   }
-};
-
-// Password change (OAuth2 users don't need this, but keeping for compatibility)
-export const changePassword = async () => {
-  throw new Error('Password changes are not available for OAuth2 users. Manage your account through Google.');
 };

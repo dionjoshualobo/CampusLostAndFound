@@ -42,8 +42,8 @@ const validateProfileCompletion = (userData) => {
 router.get('/profile', auth, async (req, res) => {
   try {
     const { data: user, error } = await supabase
-      .from('users')
-      .select('id, name, email, usertype, department, semester, contactinfo, createdat')
+      .from('profiles')
+      .select('id, name, email, usertype, department, semester, contactinfo, created_at, profile_completed')
       .eq('id', req.user.id)
       .single();
     
@@ -60,7 +60,8 @@ router.get('/profile', auth, async (req, res) => {
       department: user.department,
       semester: user.semester,
       contactInfo: user.contactinfo,
-      createdAt: user.createdat
+      createdAt: user.created_at,
+      profile_completed: user.profile_completed
     };
 
     // Get user's items using Supabase
@@ -73,7 +74,7 @@ router.get('/profile', auth, async (req, res) => {
         )
       `)
       .eq('userid', req.user.id)
-      .order('createdat', { ascending: false });
+      .order('created_at', { ascending: false });
 
     if (itemsError) {
       console.error('Error fetching user items:', itemsError);
@@ -120,7 +121,7 @@ router.put('/profile', auth, async (req, res) => {
     
     // Check if user exists using Supabase
     const { data: existingUser, error: userCheckError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id')
       .eq('id', req.user.id)
       .single();
@@ -175,14 +176,15 @@ router.put('/profile', auth, async (req, res) => {
     
     // Update user using Supabase
     const { error: updateError } = await supabase
-      .from('users')
+      .from('profiles')
       .update({
         name: name.trim(),
-        email: email.trim(),
         usertype: userType,
         department: department.trim(),
         semester: parsedSemester,
-        contactinfo: contactInfo.trim()
+        contactinfo: contactInfo.trim(),
+        profile_completed: true,
+        updated_at: new Date().toISOString()
       })
       .eq('id', req.user.id);
     
@@ -193,8 +195,8 @@ router.put('/profile', auth, async (req, res) => {
     
     // Get updated user data using Supabase
     const { data: updatedUser, error: fetchError } = await supabase
-      .from('users')
-      .select('id, name, email, usertype, department, semester, contactinfo')
+      .from('profiles')
+      .select('id, name, email, usertype, department, semester, contactinfo, profile_completed')
       .eq('id', req.user.id)
       .single();
     
@@ -207,11 +209,12 @@ router.put('/profile', auth, async (req, res) => {
     const userData = {
       id: updatedUser.id,
       name: updatedUser.name,
-      email: user.email,
-      userType: user.usertype,
-      department: user.department,
-      semester: user.semester,
-      contactInfo: user.contactinfo
+      email: updatedUser.email,
+      userType: updatedUser.usertype,
+      department: updatedUser.department,
+      semester: updatedUser.semester,
+      contactInfo: updatedUser.contactinfo,
+      profile_completed: updatedUser.profile_completed
     };
     
     res.json(userData);
@@ -224,54 +227,6 @@ router.put('/profile', auth, async (req, res) => {
   }
 });
 
-// Change password
-router.put('/password', auth, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-    
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: 'Current and new password are required' });
-    }
-    
-    // Get user with password using Supabase
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', req.user.id)
-      .single();
-    
-    if (fetchError || !user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    
-    // Validate current password
-    const isMatch = await bcrypt.compare(currentPassword, user.passwordhash);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Current password is incorrect' });
-    }
-    
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(newPassword, salt);
-    
-    // Update password using Supabase
-    const { error: updateError } = await supabase
-      .from('users')
-      .update({ passwordhash: passwordHash })
-      .eq('id', req.user.id);
-    
-    if (updateError) {
-      console.error('Error updating password:', updateError);
-      return res.status(500).json({ message: 'Error updating password', error: updateError.message });
-    }
-    
-    res.json({ message: 'Password updated successfully' });
-  } catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
 // Get user contact information - simplified and resilient to schema changes
 router.get('/contact/:id', auth, async (req, res) => {
   try {
@@ -279,7 +234,7 @@ router.get('/contact/:id', auth, async (req, res) => {
     
     // Get all user info using Supabase
     const { data: user, error: fetchError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('id, name, email, usertype, department, semester, contactinfo')
       .eq('id', userId)
       .single();

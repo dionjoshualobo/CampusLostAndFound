@@ -14,7 +14,7 @@ router.get('/item/:itemId', async (req, res) => {
         userid,
         content,
         createdat,
-        users:userid (
+        profiles:userid (
           name
         )
       `)
@@ -33,7 +33,7 @@ router.get('/item/:itemId', async (req, res) => {
       userId: comment.userid,
       content: comment.content,
       createdAt: comment.createdat,
-      userName: comment.users?.name || 'Unknown User'
+      userName: comment.profiles?.name || 'Unknown User'
     }));
     
     res.json(transformedComments);
@@ -88,7 +88,7 @@ router.post('/', auth, async (req, res) => {
         userid,
         content,
         createdat,
-        users:userid (
+        profiles:userid (
           name
         )
       `)
@@ -107,7 +107,7 @@ router.post('/', auth, async (req, res) => {
       userId: commentWithUser.userid,
       content: commentWithUser.content,
       createdAt: commentWithUser.createdat,
-      userName: commentWithUser.users?.name || 'Unknown User'
+      userName: commentWithUser.profiles?.name || 'Unknown User'
     };
     
     res.status(201).json(transformedComment);
