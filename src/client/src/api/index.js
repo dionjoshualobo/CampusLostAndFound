@@ -325,21 +325,37 @@ export const updateUserProfile = async (profileData) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
+    console.log('Updating profile for user:', user.id);
+    console.log('Profile data being sent:', profileData);
+
+    const updateData = {
+      name: profileData.name,
+      usertype: profileData.userType,
+      department: profileData.department,
+      semester: profileData.semester,
+      contactinfo: profileData.contactInfo,
+      profile_completed: true
+    };
+
+    console.log('Database update data:', updateData);
+
+    const { data, error } = await supabase
       .from('profiles')
-      .update({
-        name: profileData.name,
-        usertype: profileData.userType,
-        department: profileData.department,
-        semester: profileData.semester,
-        contactinfo: profileData.contactInfo,
-        profile_completed: true
-      })
-      .eq('id', user.id);
+      .update(updateData)
+      .eq('id', user.id)
+      .select();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Database update error:', error);
+      throw error;
+    }
 
-    return createResponse({ message: 'Profile updated successfully' });
+    console.log('Database update result:', data);
+
+    return createResponse({ 
+      message: 'Profile updated successfully',
+      ...updateData 
+    });
   } catch (error) {
     console.error('Error updating profile:', error);
     return createResponse(null, error);

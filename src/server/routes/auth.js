@@ -28,6 +28,38 @@ router.get('/user', auth, async (req, res) => {
       .eq('id', req.user.id)
       .single();
     
+    console.log('DEBUG - User profile data from database:', user);
+    console.log('DEBUG - Profile completion status:', user?.profile_completed);
+    
+    if (fetchError) {
+      console.error('Error fetching user profile:', fetchError);
+      return res.status(500).json({ 
+        message: 'Error fetching user profile' 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      user: {
+        ...user,
+        userType: user.usertype // Map for frontend compatibility
+      }
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Debug route to check profile status
+router.get('/debug-profile', auth, async (req, res) => {
+  try {
+    const { data: user, error: fetchError } = await supabase
+      .from('profiles')
+      .select('id, name, email, usertype, department, semester, contactinfo, profile_completed')
+      .eq('id', req.user.id)
+      .single();
+    
     if (fetchError || !user) {
       return res.status(404).json({ message: 'User not found' });
     }

@@ -9,6 +9,7 @@ import ItemDetails from './pages/ItemDetails';
 import Profile from './pages/Profile';
 import Test from './pages/Test';
 import { supabase } from './config/supabase';
+import { getUserProfile } from './api';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -17,6 +18,40 @@ function App() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  // Helper function to load complete user profile data
+  const loadUserProfile = async (authUser) => {
+    try {
+      const profileResponse = await getUserProfile();
+      const profile = profileResponse.data.profile;
+      
+      return {
+        id: authUser.id,
+        email: authUser.email,
+        name: profile?.name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+        avatar_url: authUser.user_metadata?.avatar_url || '',
+        userType: profile?.usertype || null,
+        department: profile?.department || null,
+        semester: profile?.semester || null,
+        contactInfo: profile?.contactinfo || null,
+        profile_completed: profile?.profile_completed || false
+      };
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      // Fallback to basic auth user data
+      return {
+        id: authUser.id,
+        email: authUser.email,
+        name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+        avatar_url: authUser.user_metadata?.avatar_url || '',
+        userType: null,
+        department: null,
+        semester: null,
+        contactInfo: null,
+        profile_completed: false
+      };
+    }
+  };
   
   useEffect(() => {
     // Check for existing Supabase session
@@ -31,18 +66,8 @@ function App() {
         }
 
         if (session) {
-          const user = session.user;
-          const userData = {
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-            avatar_url: user.user_metadata?.avatar_url || '',
-            userType: null,
-            department: null,
-            semester: null,
-            contactInfo: null,
-            profile_completed: false
-          };
+          const authUser = session.user;
+          const userData = await loadUserProfile(authUser);
 
           setIsAuthenticated(true);
           setUser(userData);
@@ -62,18 +87,8 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session) {
-          const user = session.user;
-          const userData = {
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name || user.user_metadata?.name || '',
-            avatar_url: user.user_metadata?.avatar_url || '',
-            userType: null,
-            department: null,
-            semester: null,
-            contactInfo: null,
-            profile_completed: false
-          };
+          const authUser = session.user;
+          const userData = await loadUserProfile(authUser);
 
           setIsAuthenticated(true);
           setUser(userData);
@@ -130,6 +145,20 @@ function App() {
     localStorage.setItem('user', JSON.stringify(userData));
     setIsAuthenticated(true);
     setUser(userData);
+  };
+  
+  const refreshUserProfile = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const authUser = session.user;
+        const userData = await loadUserProfile(authUser);
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      }
+    } catch (error) {
+      console.error('Error refreshing user profile:', error);
+    }
   };
   
   const logout = async () => {
@@ -197,7 +226,7 @@ function App() {
             <Route path="/items/:id" element={<ItemDetails />} />
             <Route 
               path="/profile" 
-              element={isAuthenticated ? <Profile /> : <Navigate to="/auth" />} 
+              element={isAuthenticated ? <Profile refreshUserProfile={refreshUserProfile} /> : <Navigate to="/auth" />} 
             />
           </Routes>
         </div>

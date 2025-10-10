@@ -14,7 +14,7 @@ const departments = [
   'ECE'
 ];
 
-const Profile = () => {
+const Profile = ({ refreshUserProfile }) => {
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
@@ -149,6 +149,11 @@ const Profile = () => {
         ...response.data
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      // Refresh user profile in App component to update navbar
+      if (refreshUserProfile) {
+        await refreshUserProfile();
+      }
       
       // Check if profile is now complete
       if (isProfileComplete(updatedUser)) {
