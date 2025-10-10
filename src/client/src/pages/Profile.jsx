@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { getUserProfile, updateUserProfile, changePassword } from '../api';
+import { getUserProfile, updateUserProfile } from '../api';
 import { formatDate } from '../utils/dateUtils';
 import { isProfileComplete, validateContactInfo } from '../utils/profileUtils';
 
@@ -14,7 +14,7 @@ const departments = [
   'ECE'
 ];
 
-const Profile = () => {
+const Profile = ({ refreshUserProfile }) => {
   const [profileData, setProfileData] = useState({
     name: '',
     email: '',
@@ -24,17 +24,10 @@ const Profile = () => {
     contactInfo: ''
   });
   
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  
   const [userItems, setUserItems] = useState([]);
   const [activeTab, setActiveTab] = useState('profile');
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const navigate = useNavigate();
@@ -81,13 +74,6 @@ const Profile = () => {
   const handleProfileChange = (e) => {
     setProfileData({
       ...profileData,
-      [e.target.name]: e.target.value
-    });
-  };
-  
-  const handlePasswordChange = (e) => {
-    setPasswordData({
-      ...passwordData,
       [e.target.name]: e.target.value
     });
   };
@@ -164,6 +150,11 @@ const Profile = () => {
       };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
+      // Refresh user profile in App component to update navbar
+      if (refreshUserProfile) {
+        await refreshUserProfile();
+      }
+      
       // Check if profile is now complete
       if (isProfileComplete(updatedUser)) {
         setSuccess('Profile updated successfully! You can now access all features.');
@@ -190,39 +181,6 @@ const Profile = () => {
     }
   };
   
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setError('New passwords do not match');
-      return;
-    }
-    
-    setIsChangingPassword(true);
-    setError(null);
-    setSuccess(null);
-    
-    try {
-      await changePassword({
-        currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword
-      });
-      
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-      
-      setSuccess('Password changed successfully');
-      setIsChangingPassword(false);
-    } catch (err) {
-      console.error('Error changing password:', err);
-      setError(err.response?.data?.message || 'Failed to change password');
-      setIsChangingPassword(false);
-    }
-  };
-  
   if (isLoading) return <div>Loading profile...</div>;
   
   return (
@@ -234,12 +192,6 @@ const Profile = () => {
             onClick={() => setActiveTab('profile')}
           >
             Profile Information
-          </button>
-          <button
-            className={`list-group-item list-group-item-action ${activeTab === 'password' ? 'active' : ''}`}
-            onClick={() => setActiveTab('password')}
-          >
-            Change Password
           </button>
           <button
             className={`list-group-item list-group-item-action ${activeTab === 'items' ? 'active' : ''}`}
@@ -404,62 +356,6 @@ const Profile = () => {
                   disabled={isUpdating}
                 >
                   {isUpdating ? 'Updating...' : 'Update Profile'}
-                </button>
-              </form>
-            </div>
-          </div>
-        )}
-        
-        {activeTab === 'password' && (
-          <div className="card">
-            <div className="card-header">Change Password</div>
-            <div className="card-body">
-              <form onSubmit={handlePasswordSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="currentPassword" className="form-label">Current Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="currentPassword"
-                    name="currentPassword"
-                    value={passwordData.currentPassword}
-                    onChange={handlePasswordChange}
-                    required
-                  />
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="newPassword" className="form-label">New Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="newPassword"
-                    name="newPassword"
-                    value={passwordData.newPassword}
-                    onChange={handlePasswordChange}
-                    required
-                  />
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
-                  <input
-                    type="password"
-                    className="form-control"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={passwordData.confirmPassword}
-                    onChange={handlePasswordChange}
-                    required
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={isChangingPassword}
-                >
-                  {isChangingPassword ? 'Changing...' : 'Change Password'}
                 </button>
               </form>
             </div>

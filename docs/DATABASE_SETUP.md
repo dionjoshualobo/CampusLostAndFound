@@ -25,18 +25,8 @@ CREATE TABLE categories (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create users table
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    phone VARCHAR(20),
-    student_id VARCHAR(50),
-    profile_completed BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Note: User authentication is handled by Supabase Auth
+-- Profile data is stored in the profiles table which is populated via Supabase triggers
 
 -- Create items table
 CREATE TABLE items (
@@ -44,14 +34,14 @@ CREATE TABLE items (
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     category_id INTEGER REFERENCES categories(id),
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES profiles(id),
     status VARCHAR(50) DEFAULT 'active',
     type VARCHAR(10) CHECK (type IN ('lost', 'found')) NOT NULL,
     location VARCHAR(255),
     date_lost_found DATE,
     contact_info TEXT,
     reward DECIMAL(10,2),
-    claimed_by INTEGER REFERENCES users(id),
+    claimed_by INTEGER REFERENCES profiles(id),
     resolved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -70,7 +60,7 @@ CREATE TABLE item_images (
 CREATE TABLE comments (
     id SERIAL PRIMARY KEY,
     item_id INTEGER REFERENCES items(id) ON DELETE CASCADE,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES profiles(id),
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -78,7 +68,7 @@ CREATE TABLE comments (
 -- Create notifications table
 CREATE TABLE notifications (
     id SERIAL PRIMARY KEY,
-    user_id INTEGER REFERENCES users(id),
+    user_id INTEGER REFERENCES profiles(id),
     item_id INTEGER REFERENCES items(id),
     message TEXT NOT NULL,
     type VARCHAR(50) DEFAULT 'general',
@@ -96,38 +86,34 @@ INSERT INTO categories (name, description) VALUES
 ('Other', 'Items that don''t fit other categories');
 ```
 
-### 4. Enable Row Level Security
+### 4. Enable Row Level Security (Optional - handled by Supabase)
 ```sql
--- Enable RLS for better security
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE item_images ENABLE ROW LEVEL SECURITY;
-
--- Create RLS policies
--- Users can read all users but only update their own data
-CREATE POLICY "Users can view all users" ON users FOR SELECT USING (true);
-CREATE POLICY "Users can update own data" ON users FOR UPDATE USING (auth.uid()::text = id::text);
+-- Note: Row Level Security is handled by Supabase Auth automatically
+-- The profiles table is managed by Supabase Auth triggers
+-- No additional RLS policies needed for profiles table
 
 -- Items are publicly readable, users can only modify their own items
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Items are publicly readable" ON items FOR SELECT USING (true);
 CREATE POLICY "Users can insert their own items" ON items FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
-CREATE POLICY "Users can update their own items" ON items FOR UPDATE USING (auth.uid()::text = user_id::text);
+CREATE POLICY "Users can update their own items" ON items FOR UPDATE USING (auth.uid()::text = user_id::text);  
 CREATE POLICY "Users can delete their own items" ON items FOR DELETE USING (auth.uid()::text = user_id::text);
 
 -- Comments are publicly readable, users can only modify their own comments
+ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Comments are publicly readable" ON comments FOR SELECT USING (true);
 CREATE POLICY "Users can insert their own comments" ON comments FOR INSERT WITH CHECK (auth.uid()::text = user_id::text);
 CREATE POLICY "Users can update their own comments" ON comments FOR UPDATE USING (auth.uid()::text = user_id::text);
 CREATE POLICY "Users can delete their own comments" ON comments FOR DELETE USING (auth.uid()::text = user_id::text);
 
 -- Notifications are private to each user
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own notifications" ON notifications FOR SELECT USING (auth.uid()::text = user_id::text);
 CREATE POLICY "System can create notifications" ON notifications FOR INSERT WITH CHECK (true);
 CREATE POLICY "Users can update their own notifications" ON notifications FOR UPDATE USING (auth.uid()::text = user_id::text);
 
 -- Item images follow the same policy as items
+ALTER TABLE item_images ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Item images are publicly readable" ON item_images FOR SELECT USING (true);
 CREATE POLICY "Users can manage images for their items" ON item_images 
     FOR ALL USING (EXISTS (SELECT 1 FROM items WHERE items.id = item_images.item_id AND auth.uid()::text = items.user_id::text));

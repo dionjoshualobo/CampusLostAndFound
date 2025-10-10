@@ -1,22 +1,24 @@
 export const isProfileComplete = (user) => {
   if (!user) return false;
   
-  // Check required fields for profile completion - ALL fields are now mandatory
-  const requiredFields = ['name', 'userType', 'department', 'contactInfo'];
+  console.log('isProfileComplete - checking user:', user);
+  console.log('isProfileComplete - profile_completed value:', user.profile_completed);
   
-  // Check if all required fields are present and not empty
-  for (const field of requiredFields) {
-    if (!user[field] || (typeof user[field] === 'string' && user[field].trim() === '')) {
-      return false;
-    }
+  // Always prioritize the database profile_completed flag
+  if (user.profile_completed === true) {
+    console.log('isProfileComplete - returning true (database flag is true)');
+    return true;
   }
   
-  // If user is a student, semester is also required
-  if (user.userType === 'student' && (!user.semester || user.semester === '')) {
+  // If profile_completed is false, null, or undefined, profile is not complete
+  if (user.profile_completed === false || user.profile_completed == null) {
+    console.log('isProfileComplete - returning false (database flag is false/null/undefined)');
     return false;
   }
   
-  return true;
+  // This shouldn't happen, but fallback to false for safety
+  console.log('isProfileComplete - returning false (fallback)');
+  return false;
 };
 
 export const getMissingFields = (user) => {

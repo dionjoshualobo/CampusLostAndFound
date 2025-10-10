@@ -14,7 +14,7 @@ async function validateDatabase() {
     console.log('Connection successful!');
     
     // 1. Check if all required tables exist
-    const requiredTables = ['users', 'items', 'categories', 'comments', 'notifications'];
+    const requiredTables = ['profiles', 'items', 'categories', 'comments', 'notifications'];
     const result = await client.query(`
       SELECT table_name 
       FROM information_schema.tables 
@@ -45,8 +45,8 @@ async function validateDatabase() {
       });
       
       // Table-specific validation
-      if (table === 'users') {
-        await validateUsersTable(client);
+      if (table === 'profiles') {
+        await validateProfilesTable(client);
       } else if (table === 'items') {
         await validateItemsTable(client);
       } else if (table === 'notifications') {
@@ -62,23 +62,23 @@ async function validateDatabase() {
   }
 }
 
-async function validateUsersTable(client) {
+async function validateProfilesTable(client) {
   try {
-    const result = await client.query('SELECT COUNT(*) as count FROM users');
-    console.log(`Users table has ${result.rows[0].count} records`);
+    const result = await client.query('SELECT COUNT(*) as count FROM profiles');
+    console.log(`Profiles table has ${result.rows[0].count} records`);
     
     // Check for required columns
-    const requiredColumns = ['id', 'name', 'email', 'passwordhash'];
+    const requiredColumns = ['id', 'name', 'email', 'profile_completed'];
     for (const column of requiredColumns) {
       try {
-        await client.query(`SELECT ${column} FROM users LIMIT 1`);
+        await client.query(`SELECT ${column} FROM profiles LIMIT 1`);
         console.log(`✓ Column ${column} exists`);
       } catch (err) {
         console.log(`✗ Column ${column} missing or inaccessible`);
       }
     }
   } catch (error) {
-    console.error('Users table validation error:', error);
+    console.error('Profiles table validation error:', error);
   }
 }
 
