@@ -1,23 +1,8 @@
 export const isProfileComplete = (user) => {
   if (!user) return false;
-  
-  console.log('isProfileComplete - checking user:', user);
-  console.log('isProfileComplete - profile_completed value:', user.profile_completed);
-  
-  // Always prioritize the database profile_completed flag
-  if (user.profile_completed === true) {
-    console.log('isProfileComplete - returning true (database flag is true)');
-    return true;
-  }
-  
-  // If profile_completed is false, null, or undefined, profile is not complete
-  if (user.profile_completed === false || user.profile_completed == null) {
-    console.log('isProfileComplete - returning false (database flag is false/null/undefined)');
-    return false;
-  }
-  
-  // This shouldn't happen, but fallback to false for safety
-  console.log('isProfileComplete - returning false (fallback)');
+
+  if (user.profile_completed === true) return true;
+  if (user.profile_completed === false || user.profile_completed == null) return false;
   return false;
 };
 

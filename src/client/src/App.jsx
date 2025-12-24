@@ -18,6 +18,18 @@ function App() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
+
+  const buildUserFromAuth = (authUser) => ({
+    id: authUser.id,
+    email: authUser.email,
+    name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
+    avatar_url: authUser.user_metadata?.avatar_url || '',
+    userType: null,
+    department: null,
+    semester: null,
+    contactInfo: null,
+    profile_completed: false
+  });
   
   // Helper function to load complete user profile data
   const loadUserProfile = async (authUser) => {
@@ -39,17 +51,7 @@ function App() {
     } catch (error) {
       console.error('Error loading user profile:', error);
       // Fallback to basic auth user data
-      return {
-        id: authUser.id,
-        email: authUser.email,
-        name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
-        avatar_url: authUser.user_metadata?.avatar_url || '',
-        userType: null,
-        department: null,
-        semester: null,
-        contactInfo: null,
-        profile_completed: false
-      };
+      return buildUserFromAuth(authUser);
     }
   };
   
@@ -85,7 +87,13 @@ function App() {
 
         if (session) {
           const authUser = session.user;
-          const userData = await loadUserProfile(authUser);
+
+          // Don't let a slow profile fetch block the entire app from loading.
+          const profilePromise = loadUserProfile(authUser);
+          const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000, null));
+          const profileOrTimeout = await Promise.race([profilePromise, timeoutPromise]);
+
+          const userData = profileOrTimeout || buildUserFromAuth(authUser);
 
           setIsAuthenticated(true);
           setUser(userData);
