@@ -89,8 +89,9 @@ function App() {
           const authUser = session.user;
 
           // Don't let a slow profile fetch block the entire app from loading.
+          // Use aggressive 2s timeout to prevent occasional reload hangs.
           const profilePromise = loadUserProfile(authUser);
-          const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 5000, null));
+          const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2000, null));
           const profileOrTimeout = await Promise.race([profilePromise, timeoutPromise]);
 
           const userData = profileOrTimeout || buildUserFromAuth(authUser);
