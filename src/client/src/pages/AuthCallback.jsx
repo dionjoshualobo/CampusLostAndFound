@@ -11,10 +11,17 @@ const AuthCallback = ({ login }) => {
 
     const handleAuthCallback = async () => {
       try {
-        // Handle the OAuth callback - parse session from the redirect URL
-        // Supabase v2 provides `getSessionFromUrl` to extract the OAuth session
-        // after the provider redirects back to our app.
-        const { data, error } = await supabase.auth.getSessionFromUrl();
+        // Handle the OAuth callback - attempt to parse session from the redirect URL
+        // If the installed supabase-js version doesn't provide
+        // `getSessionFromUrl`, fall back to `getSession()` so we don't throw.
+        let data, error;
+        if (supabase?.auth && typeof supabase.auth.getSessionFromUrl === 'function') {
+          ({ data, error } = await supabase.auth.getSessionFromUrl());
+        } else if (supabase?.auth && typeof supabase.auth.getSession === 'function') {
+          ({ data, error } = await supabase.auth.getSession());
+        } else {
+          throw new Error('Supabase auth client is not available');
+        }
         
         if (error) {
           console.error('Auth callback error:', error);
