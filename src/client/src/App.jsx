@@ -57,11 +57,29 @@ function App() {
     // Check for existing Supabase session
     const checkSession = async () => {
       try {
+        // If we have cached token and user in localStorage, use them immediately
+        // to avoid showing the global loading spinner on page reloads.
+        const cachedToken = localStorage.getItem('token');
+        const cachedUser = localStorage.getItem('user');
+        if (cachedToken && cachedUser) {
+          try {
+            const parsed = JSON.parse(cachedUser);
+            setIsAuthenticated(true);
+            setUser(parsed);
+          } catch (e) {
+            console.warn('Failed to parse cached user:', e);
+            localStorage.removeItem('user');
+            localStorage.removeItem('token');
+          }
+          // We still attempt to refresh session in the background
+          // but avoid blocking the UI on it.
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
-        
+
         if (error) {
           console.error('Session check error:', error);
-          setIsLoading(false);
+          // if we already set cached auth above, don't override the loading state here
           return;
         }
 
