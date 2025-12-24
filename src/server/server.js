@@ -9,6 +9,7 @@ const categoryRoutes = require('./routes/categories');
 const commentRoutes = require('./routes/comments');
 const notificationRoutes = require('./routes/notifications');
 const supabase = require('./config/db');
+const { initRedis, closeRedis } = require('./config/redis');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -57,6 +58,11 @@ const testSupabaseConnection = async () => {
 
 testSupabaseConnection();
 
+// Initialize Redis (optional - server works without it)
+initRedis().catch(err => {
+  console.warn('Redis initialization failed, continuing without cache:', err.message);
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
@@ -81,7 +87,17 @@ module.exports = app;
 // For local development
 if (require.main === module) {
   const PORT = process.env.PORT || 5000;
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', async () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    await closeRedis();
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
   });
 }

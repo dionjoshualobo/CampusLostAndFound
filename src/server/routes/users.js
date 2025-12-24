@@ -3,6 +3,8 @@ const router = express.Router();
 const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 const bcrypt = require('bcrypt');
+const { cacheMiddleware } = require('../middleware/cache');
+const { deleteCache } = require('../config/redis');
 
 // Validation middleware for profile completion
 const validateProfileCompletion = (userData) => {
@@ -38,8 +40,8 @@ const validateProfileCompletion = (userData) => {
   return errors;
 };
 
-// Get user profile
-router.get('/profile', auth, async (req, res) => {
+// Get user profile (with 5-minute cache)
+router.get('/profile', auth, cacheMiddleware('user-profile', 300), async (req, res) => {
   try {
     const { data: user, error } = await supabase
       .from('profiles')
@@ -192,6 +194,9 @@ router.put('/profile', auth, async (req, res) => {
       console.error('Error updating user:', updateError);
       return res.status(500).json({ message: 'Error updating user profile', error: updateError.message });
     }
+    
+    // Invalidate user profile cache
+    await deleteCache(`user-profile:${req.user.id}:/api/users/profile`);
     
     // Get updated user data using Supabase
     const { data: updatedUser, error: fetchError } = await supabase
