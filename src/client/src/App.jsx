@@ -81,7 +81,9 @@ function App() {
 
         if (error) {
           console.error('Session check error:', error);
-          // if we already set cached auth above, don't override the loading state here
+          // If we have cached data, use it and stop loading
+          // Otherwise, clear everything and stop loading
+          setIsLoading(false);
           return;
         }
 

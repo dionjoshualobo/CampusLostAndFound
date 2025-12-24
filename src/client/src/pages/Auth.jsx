@@ -16,10 +16,17 @@ const Auth = ({ user }) => {
       setLoading(true);
       setError('');
       
+      // Force localhost redirect in development
+      const redirectUrl = import.meta.env.DEV 
+        ? `${window.location.origin}/auth/callback`
+        : 'https://campus-lost-and-found.vercel.app/auth/callback';
+      
+      console.log('OAuth redirect URL:', redirectUrl);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: redirectUrl
         }
       });
 

@@ -4,8 +4,8 @@
   "description": "Campus Lost and Found Platform",
   "scripts": {
     "build": "cd src/client && npm run build",
-    "dev": "cd src/client && npm run dev",
-    "dev:host": "cd src/client && npm run dev -- --host",
+    "dev": "cd src/server && npm run dev",
+    "dev:host": "cd src/server && npm run dev:host",
     "install": "cd src/client && npm install"
   },
   "private": true
