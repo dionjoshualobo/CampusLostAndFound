@@ -7,19 +7,24 @@ const AuthCallback = ({ login }) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let mounted = true;
+
     const handleAuthCallback = async () => {
       try {
-        // Handle the OAuth callback
-        const { data, error } = await supabase.auth.getSession();
+        // Handle the OAuth callback - parse session from the redirect URL
+        // Supabase v2 provides `getSessionFromUrl` to extract the OAuth session
+        // after the provider redirects back to our app.
+        const { data, error } = await supabase.auth.getSessionFromUrl();
         
         if (error) {
           console.error('Auth callback error:', error);
+          if (!mounted) return;
           setError('Authentication failed. Please try again.');
           setLoading(false);
           return;
         }
 
-        if (data.session) {
+        if (data?.session) {
           const user = data.session.user;
           
           // Extract user data from OAuth response
@@ -37,20 +42,39 @@ const AuthCallback = ({ login }) => {
 
           // Set the session token and user data
           login(data.session.access_token, userData);
-          
-          // Redirect will happen automatically due to login state change
+
+          // Stop local loading so component can redirect
+          if (mounted) setLoading(false);
         } else {
-          setError('No authentication session found.');
-          setLoading(false);
+          if (mounted) {
+            setError('No authentication session found.');
+            setLoading(false);
+          }
         }
       } catch (err) {
         console.error('Auth callback error:', err);
-        setError('An unexpected error occurred during authentication.');
-        setLoading(false);
+        if (mounted) {
+          setError('An unexpected error occurred during authentication.');
+          setLoading(false);
+        }
       }
     };
 
     handleAuthCallback();
+
+    // Safety timeout: if Supabase doesn't complete the redirect handling,
+    // stop showing the spinner after 10s and show an error so the user can retry.
+    const timeout = setTimeout(() => {
+      if (mounted) {
+        setLoading(false);
+        if (!error) setError('Authentication timed out. Please try signing in again.');
+      }
+    }, 10000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+    };
   }, [login]);
 
   if (loading) {
@@ -93,8 +117,8 @@ const AuthCallback = ({ login }) => {
     );
   }
 
-  // If we get here, redirect to auth page
-  return <Navigate to="/auth" replace />;
+  // If login was successful we set loading false above; redirect to home.
+  return <Navigate to="/" replace />;
 };
 
 export default AuthCallback;
