@@ -11,28 +11,49 @@ const AuthCallback = ({ login }) => {
 
     const handleAuthCallback = async () => {
       try {
-        // Handle the OAuth callback - attempt to parse session from the redirect URL
-        // If the installed supabase-js version doesn't provide
-        // `getSessionFromUrl`, fall back to `getSession()` so we don't throw.
-        let data, error;
-        if (supabase?.auth && typeof supabase.auth.getSessionFromUrl === 'function') {
-          ({ data, error } = await supabase.auth.getSessionFromUrl());
-        } else if (supabase?.auth && typeof supabase.auth.getSession === 'function') {
-          ({ data, error } = await supabase.auth.getSession());
+        // Get the code from URL params (PKCE flow)
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        
+        let session = null;
+        let authError = null;
+        
+        if (code) {
+          // PKCE flow - exchange code for session
+          console.log('Exchanging code for session...');
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          session = data?.session;
+          authError = error;
+        } else if (accessToken) {
+          // Implicit flow - token is in the hash
+          console.log('Getting session from hash...');
+          const { data, error } = await supabase.auth.getSession();
+          session = data?.session;
+          authError = error;
         } else {
-          throw new Error('Supabase auth client is not available');
+          // Try to get existing session
+          console.log('Attempting to get existing session...');
+          const sessionPromise = supabase.auth.getSession();
+          const timeoutPromise = new Promise((resolve) => 
+            setTimeout(() => resolve({ data: { session: null }, error: new Error('Session fetch timeout') }), 5000)
+          );
+          const { data, error } = await Promise.race([sessionPromise, timeoutPromise]);
+          session = data?.session;
+          authError = error;
         }
         
-        if (error) {
-          console.error('Auth callback error:', error);
+        if (authError) {
+          console.error('Auth callback error:', authError);
           if (!mounted) return;
           setError('Authentication failed. Please try again.');
           setLoading(false);
           return;
         }
 
-        if (data?.session) {
-          const user = data.session.user;
+        if (session) {
+          const user = session.user;
           
           // Extract user data from OAuth response
           const userData = {
@@ -48,7 +69,7 @@ const AuthCallback = ({ login }) => {
           };
 
           // Set the session token and user data
-          login(data.session.access_token, userData);
+          login(session.access_token, userData);
 
           // Stop local loading so component can redirect
           if (mounted) setLoading(false);

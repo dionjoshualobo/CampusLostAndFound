@@ -17,7 +17,8 @@ const Home = () => {
       try {
         console.log('Starting to fetch data...');
         
-        // Fetch items and categories in parallel
+        // Don't wait for auth - just fetch public data directly
+        // The categories and items tables should be publicly readable
         const [itemsResponse, categoriesResponse] = await Promise.all([
           getItems(),
           getCategories()
@@ -26,12 +27,11 @@ const Home = () => {
         console.log('Items response:', itemsResponse);
         console.log('Categories response:', categoriesResponse);
         
-        setItems(itemsResponse.data);
-        setCategories(categoriesResponse.data);
+        setItems(itemsResponse.data || []);
+        setCategories(categoriesResponse.data || []);
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
-        console.error('Error details:', err.response, err.message);
         setError(`Failed to load data: ${err.message || 'Please try again later.'}`);
         setIsLoading(false);
       }

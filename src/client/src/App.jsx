@@ -35,17 +35,18 @@ function App() {
   const loadUserProfile = async (authUser) => {
     try {
       const profileResponse = await getUserProfile();
-      const profile = profileResponse.data.profile;
+      // getUserProfile returns { data: { user: ..., items: ... } }
+      const profile = profileResponse.data.user;
       
       return {
         id: authUser.id,
         email: authUser.email,
         name: profile?.name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
         avatar_url: authUser.user_metadata?.avatar_url || '',
-        userType: profile?.usertype || null,
+        userType: profile?.userType || null,
         department: profile?.department || null,
         semester: profile?.semester || null,
-        contactInfo: profile?.contactinfo || null,
+        contactInfo: profile?.contactInfo || null,
         profile_completed: profile?.profile_completed || false
       };
     } catch (error) {
@@ -63,26 +64,44 @@ function App() {
         // to avoid showing the global loading spinner on page reloads.
         const cachedToken = localStorage.getItem('token');
         const cachedUser = localStorage.getItem('user');
+        
         if (cachedToken && cachedUser) {
           try {
             const parsed = JSON.parse(cachedUser);
             setIsAuthenticated(true);
             setUser(parsed);
+            // CRITICAL: Stop loading immediately when we have cached data
+            // This prevents the white screen spinner on page reloads
+            setIsLoading(false);
           } catch (e) {
             console.warn('Failed to parse cached user:', e);
             localStorage.removeItem('user');
             localStorage.removeItem('token');
           }
-          // We still attempt to refresh session in the background
-          // but avoid blocking the UI on it.
         }
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Continue to refresh session in the background (non-blocking)
+        // Add timeout to prevent hanging if Supabase auth is slow
+        const sessionPromise = supabase.auth.getSession();
+        const sessionTimeout = new Promise((resolve) => 
+          setTimeout(() => resolve({ data: { session: null }, error: new Error('Session check timeout') }), 3000)
+        );
+        
+        const { data: { session }, error } = await Promise.race([sessionPromise, sessionTimeout]);
 
         if (error) {
           console.error('Session check error:', error);
-          // If we have cached data, use it and stop loading
-          // Otherwise, clear everything and stop loading
+          // If session check timed out, the stored Supabase session is problematic
+          // Clear it so the next reload doesn't hang again
+          if (error.message === 'Session check timeout') {
+            console.warn('Clearing problematic Supabase session storage');
+            localStorage.removeItem('campus-laf-auth');
+            // Also clear our cached tokens since they may be stale
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setIsAuthenticated(false);
+            setUser(null);
+          }
           setIsLoading(false);
           return;
         }
@@ -102,10 +121,15 @@ function App() {
           setUser(userData);
           localStorage.setItem('token', session.access_token);
           localStorage.setItem('user', JSON.stringify(userData));
+        } else if (!cachedToken) {
+          // No session and no cached data - user is not logged in
+          setIsAuthenticated(false);
+          setUser(null);
         }
       } catch (err) {
         console.error('Session check error:', err);
       } finally {
+        // Always ensure loading is stopped
         setIsLoading(false);
       }
     };

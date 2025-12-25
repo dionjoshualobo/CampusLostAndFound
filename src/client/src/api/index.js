@@ -1,4 +1,4 @@
-import { supabase } from '../config/supabase';
+import { supabase, supabaseAnon } from '../config/supabase';
 
 // Helper function to transform Supabase responses to match axios format
 const createResponse = (data, error = null) => {
@@ -14,36 +14,45 @@ const createResponse = (data, error = null) => {
   return { data };
 };
 
-// Items APIs
+// Items APIs - use supabaseAnon for public data to avoid auth refresh blocking
 export const getItems = async () => {
   try {
-    // First get all items
-    const { data: items, error: itemsError } = await supabase
+    console.log('getItems: Starting fetch...');
+    
+    // First get all items - use anon client to avoid auth state blocking
+    const { data: items, error: itemsError } = await supabaseAnon
       .from('items')
       .select('*')
       .order('createdat', { ascending: false });
 
+    console.log('getItems: items result:', { items, itemsError });
     if (itemsError) throw itemsError;
 
-    // Get all profiles to map names
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, name');
+    // Get all profiles to map names (may fail due to RLS, that's OK)
+    let profileMap = {};
+    try {
+      const { data: profiles, error: profilesError } = await supabaseAnon
+        .from('profiles')
+        .select('id, name');
 
-    if (profilesError) throw profilesError;
+      console.log('getItems: profiles result:', { profiles, profilesError });
+      if (!profilesError && profiles) {
+        profileMap = profiles.reduce((map, profile) => {
+          map[profile.id] = profile.name;
+          return map;
+        }, {});
+      }
+    } catch (e) {
+      console.warn('Could not fetch profiles (RLS may be enabled):', e);
+    }
 
     // Get all categories to map names
-    const { data: categories, error: categoriesError } = await supabase
+    const { data: categories, error: categoriesError } = await supabaseAnon
       .from('categories')
       .select('id, name');
 
+    console.log('getItems: categories result:', { categories, categoriesError });
     if (categoriesError) throw categoriesError;
-
-    // Create lookup maps
-    const profileMap = (profiles || []).reduce((map, profile) => {
-      map[profile.id] = profile.name;
-      return map;
-    }, {});
 
     const categoryMap = (categories || []).reduce((map, category) => {
       map[category.id] = category.name;
@@ -78,11 +87,13 @@ export const getItems = async () => {
 
 export const getCategories = async () => {
   try {
-    const { data, error } = await supabase
+    console.log('getCategories: Starting fetch...');
+    const { data, error } = await supabaseAnon
       .from('categories')
       .select('*')
       .order('name');
 
+    console.log('getCategories: result:', { data, error });
     if (error) throw error;
     return createResponse(data || []);
   } catch (error) {
@@ -93,8 +104,8 @@ export const getCategories = async () => {
 
 export const getItem = async (id) => {
   try {
-    // Get the item
-    const { data: item, error: itemError } = await supabase
+    // Get the item - use anon client to avoid auth blocking
+    const { data: item, error: itemError } = await supabaseAnon
       .from('items')
       .select('*')
       .eq('id', id)
@@ -103,14 +114,14 @@ export const getItem = async (id) => {
     if (itemError) throw itemError;
 
     // Get user info
-    const { data: user, error: userError } = await supabase
+    const { data: user, error: userError } = await supabaseAnon
       .from('profiles')
       .select('id, name')
       .eq('id', item.userid)
       .single();
 
     // Get category info
-    const { data: category, error: categoryError } = await supabase
+    const { data: category, error: categoryError } = await supabaseAnon
       .from('categories')
       .select('id, name')
       .eq('id', item.categoryid)
@@ -119,7 +130,7 @@ export const getItem = async (id) => {
     // Get claimer info if claimed
     let claimer = null;
     if (item.claimedby) {
-      const { data: claimerData } = await supabase
+      const { data: claimerData } = await supabaseAnon
         .from('profiles')
         .select('id, name')
         .eq('id', item.claimedby)
@@ -128,7 +139,7 @@ export const getItem = async (id) => {
     }
 
     // Get item images
-    const { data: images } = await supabase
+    const { data: images } = await supabaseAnon
       .from('item_images')
       .select('id, imageurl, filename')
       .eq('itemid', id);
@@ -166,8 +177,8 @@ export const getItem = async (id) => {
 // Comments APIs
 export const getItemComments = async (itemId) => {
   try {
-    // Get comments
-    const { data: comments, error: commentsError } = await supabase
+    // Get comments - use anon client for read operations
+    const { data: comments, error: commentsError } = await supabaseAnon
       .from('comments')
       .select('*')
       .eq('itemid', itemId)
@@ -177,7 +188,7 @@ export const getItemComments = async (itemId) => {
 
     // Get all profiles for comment authors
     const userIds = [...new Set(comments.map(comment => comment.userid))];
-    const { data: profiles, error: profilesError } = await supabase
+    const { data: profiles, error: profilesError } = await supabaseAnon
       .from('profiles')
       .select('id, name')
       .in('id', userIds);
