@@ -277,14 +277,42 @@ export const deleteComment = async (commentId) => {
 // User Profile APIs  
 export const getUserProfile = async () => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    console.log('getUserProfile: start');
+    // Lightweight auth fetch with timeout; if it fails, try cached user before giving up
+    const getUserPromise = supabase.auth.getUser();
+    const timeoutPromise = new Promise((resolve) =>
+      setTimeout(() => resolve({ data: { user: null }, error: new Error('getUser timeout') }), 5000)
+    );
+    const { data: { user: sessionUser }, error: sessionError } = await Promise.race([getUserPromise, timeoutPromise]);
+    if (sessionError) {
+      console.warn('Profile session warning:', sessionError.message);
+    }
+
+    let user = sessionUser;
+    console.log('getUserProfile: sessionUser', user?.id);
+    if (!user) {
+      console.warn('getUserProfile: no session user (timeout or unauth), checking cache');
+      // Fallback to cached user to keep Profile usable when Supabase is slow/offline
+      const cachedUserRaw = localStorage.getItem('user');
+      if (cachedUserRaw) {
+        try {
+          const cachedUser = JSON.parse(cachedUserRaw);
+          console.log('getUserProfile: using cached user', cachedUser.id);
+          return createResponse({ user: cachedUser, items: [] });
+        } catch (e) {
+          console.warn('Profile cache parse failed:', e.message);
+        }
+      }
+      throw new Error('Not authenticated');
+    }
 
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
+
+    console.log('getUserProfile: profile query result', { data, error });
 
     if (error) throw error;
 
@@ -295,10 +323,14 @@ export const getUserProfile = async () => {
       .eq('userid', user.id)
       .order('createdat', { ascending: false });
 
+    console.log('getUserProfile: items result', { userItems, itemsError });
+
     // Get categories for the items
     const { data: categories, error: categoriesError } = await supabase
       .from('categories')
       .select('id, name');
+
+    console.log('getUserProfile: categories result', { categories, categoriesError });
 
     const categoryMap = (categories || []).reduce((map, category) => {
       map[category.id] = category.name;
@@ -321,11 +353,25 @@ export const getUserProfile = async () => {
       categoryName: categoryMap[item.categoryid] || null
     }));
 
-    return createResponse({
+    const responsePayload = {
       user: userData,
       items: items
-    });
+    };
+
+    console.log('getUserProfile: returning payload', responsePayload);
+    return createResponse(responsePayload);
   } catch (error) {
+    // If we have cached user data, return it so the UI can still render something
+    try {
+      const cachedUserRaw = localStorage.getItem('user');
+      if (cachedUserRaw) {
+        const cachedUser = JSON.parse(cachedUserRaw);
+        console.warn('getUserProfile: falling back to cached user in catch');
+        return createResponse({ user: cachedUser, items: [] });
+      }
+    } catch (cacheErr) {
+      console.warn('Profile cache read failed:', cacheErr.message);
+    }
     console.error('Error fetching profile:', error);
     return createResponse(null, error);
   }
@@ -582,6 +628,15 @@ export const getNotifications = async () => {
 
     const itemMap = (items || []).reduce((map, item) => {
       map[item.id] = item.title;
+    try {
+      const cachedUserRaw = localStorage.getItem('user');
+      if (cachedUserRaw) {
+        const cachedUser = JSON.parse(cachedUserRaw);
+        return createResponse({ user: cachedUser, items: [] });
+      }
+    } catch (cacheErr) {
+      console.warn('Profile cache read failed:', cacheErr.message);
+    }
       return map;
     }, {});
 
