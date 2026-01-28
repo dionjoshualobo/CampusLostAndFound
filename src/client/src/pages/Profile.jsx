@@ -49,7 +49,9 @@ const Profile = ({ refreshUserProfile }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
+        console.log('Profile.jsx: fetching profile...');
         const response = await getUserProfile();
+        console.log('Profile.jsx: profile response', response);
         
         setProfileData({
           name: response.data.user.name,
@@ -182,6 +184,14 @@ const Profile = ({ refreshUserProfile }) => {
   };
   
   if (isLoading) return <div>Loading profile...</div>;
+  if (error) {
+    return (
+      <div>
+        <div className="alert alert-danger">{error}</div>
+        <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(error, null, 2)}</pre>
+      </div>
+    );
+  }
   
   return (
     <div className="row">

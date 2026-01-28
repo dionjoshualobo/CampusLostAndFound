@@ -60,18 +60,16 @@ function App() {
     // Check for existing Supabase session
     const checkSession = async () => {
       try {
-        // If we have cached token and user in localStorage, use them immediately
-        // to avoid showing the global loading spinner on page reloads.
         const cachedToken = localStorage.getItem('token');
         const cachedUser = localStorage.getItem('user');
+        let parsedCachedUser = null;
         
+        // Use cached session immediately to avoid flicker on reload
         if (cachedToken && cachedUser) {
           try {
-            const parsed = JSON.parse(cachedUser);
+            parsedCachedUser = JSON.parse(cachedUser);
             setIsAuthenticated(true);
-            setUser(parsed);
-            // CRITICAL: Stop loading immediately when we have cached data
-            // This prevents the white screen spinner on page reloads
+            setUser(parsedCachedUser);
             setIsLoading(false);
           } catch (e) {
             console.warn('Failed to parse cached user:', e);
@@ -80,28 +78,12 @@ function App() {
           }
         }
 
-        // Continue to refresh session in the background (non-blocking)
-        // Add timeout to prevent hanging if Supabase auth is slow
-        const sessionPromise = supabase.auth.getSession();
-        const sessionTimeout = new Promise((resolve) => 
-          setTimeout(() => resolve({ data: { session: null }, error: new Error('Session check timeout') }), 3000)
-        );
-        
-        const { data: { session }, error } = await Promise.race([sessionPromise, sessionTimeout]);
+        // Refresh Supabase session in background without racing timeout to avoid spurious warnings
+        const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error('Session check error:', error);
-          // If session check timed out, the stored Supabase session is problematic
-          // Clear it so the next reload doesn't hang again
-          if (error.message === 'Session check timeout') {
-            console.warn('Clearing problematic Supabase session storage');
-            localStorage.removeItem('campus-laf-auth');
-            // Also clear our cached tokens since they may be stale
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setIsAuthenticated(false);
-            setUser(null);
-          }
+          console.warn('Session check warning:', error.message);
+          // If Supabase is slow/offline, keep cached auth instead of forcing logout
           setIsLoading(false);
           return;
         }
