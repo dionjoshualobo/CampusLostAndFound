@@ -4,11 +4,10 @@ const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 const { validateItemReport } = require('../middleware/validation');
 const { upload, uploadToSupabase, deleteFromSupabase } = require('../middleware/upload');
-const { cacheMiddleware } = require('../middleware/cache');
-const { deleteCachePattern } = require('../config/redis');
+ 
 
-// Get all items with category info and images (with 2-minute cache)
-router.get('/', cacheMiddleware('items-list', 120), async (req, res) => {
+// Get all items with category info and images
+router.get('/', async (req, res) => {
   try {
     // Using Supabase query builder
     const { data: items, error } = await supabase
