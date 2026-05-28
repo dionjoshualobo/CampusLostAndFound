@@ -192,7 +192,7 @@ function App() {
   
   return (
     <Router>
-      <div className="App">
+      <div className="App app-shell">
         <Navbar 
           isAuthenticated={isAuthenticated} 
           user={user} 
@@ -200,36 +200,38 @@ function App() {
           isDarkMode={isDarkMode}
           toggleDarkMode={toggleDarkMode}
         />
-        <div className="container mt-4">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route 
-              path="/auth" 
-              element={isAuthenticated ? <Navigate to="/" /> : <Auth />} 
-            />
-            <Route 
-              path="/auth/callback" 
-              element={<AuthCallback login={login} />} 
-            />
-            <Route 
-              path="/login" 
-              element={<Navigate to="/auth" replace />} 
-            />
-            <Route 
-              path="/register" 
-              element={<Navigate to="/auth" replace />} 
-            />
-            <Route 
-              path="/items/new" 
-              element={isAuthenticated ? <ItemForm /> : <Navigate to="/auth" />} 
-            />
-            <Route path="/items/:id" element={<ItemDetails />} />
-            <Route 
-              path="/profile" 
-              element={isAuthenticated ? <Profile refreshUserProfile={refreshUserProfile} /> : <Navigate to="/auth" />} 
-            />
-          </Routes>
-        </div>
+        <main className="main-content">
+          <div className="container">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route 
+                path="/auth" 
+                element={isAuthenticated ? <Navigate to="/" /> : <Auth />} 
+              />
+              <Route 
+                path="/auth/callback" 
+                element={<AuthCallback login={login} />} 
+              />
+              <Route 
+                path="/login" 
+                element={<Navigate to="/auth" replace />} 
+              />
+              <Route 
+                path="/register" 
+                element={<Navigate to="/auth" replace />} 
+              />
+              <Route 
+                path="/items/new" 
+                element={isAuthenticated ? <ItemForm /> : <Navigate to="/auth" />} 
+              />
+              <Route path="/items/:id" element={<ItemDetails />} />
+              <Route 
+                path="/profile" 
+                element={isAuthenticated ? <Profile refreshUserProfile={refreshUserProfile} /> : <Navigate to="/auth" />} 
+              />
+            </Routes>
+          </div>
+        </main>
       </div>
     </Router>
   );

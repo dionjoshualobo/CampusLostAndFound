@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createItem, getCategories, checkProfileStatus } from '../api';
 import ProfileCompletionModal from '../components/ProfileCompletionModal';
 
 const ItemForm = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
@@ -64,6 +65,16 @@ const ItemForm = () => {
       window.removeEventListener('focus', handleFocus);
     };
   }, []);
+
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam && ['lost', 'found'].includes(statusParam)) {
+      setFormData(prevState => ({
+        ...prevState,
+        status: statusParam
+      }));
+    }
+  }, [searchParams]);
 
   // Cleanup image preview URL when component unmounts
   useEffect(() => {
@@ -246,161 +257,171 @@ const ItemForm = () => {
   
   return (
     <>
-      <div className="row justify-content-center">
-        <div className="col-md-8">
-          <div className="card">
-            <div className="card-body">
-              <h2 className="card-title">Report {status === 'lost' ? 'Lost' : 'Found'} Item</h2>
+      <div className="row g-4">
+        <div className="col-lg-8">
+          <div className="card detail-card">
+            <div className="card-body p-4">
+              <div className="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                  <h2 className="card-title mb-1">Report {status === 'lost' ? 'Lost' : 'Found'} Item</h2>
+                  <p className="text-muted mb-0">Add clear details to help someone match the item quickly.</p>
+                </div>
+                <span className={`badge-soft ${status === 'lost' ? 'lost' : 'found'}`}>
+                  {status === 'lost' ? 'Lost' : 'Found'}
+                </span>
+              </div>
               
               {error && <div className="alert alert-danger">{error}</div>}
               
               <form onSubmit={onSubmit}>
-                <div className="mb-3">
-                  <label htmlFor="status" className="form-label">Item Status</label>
-                  <select
-                    className="form-select"
-                    id="status"
-                    name="status"
-                    value={status}
-                    onChange={onChange}
-                    required
-                  >
-                    <option value="lost">Lost Item</option>
-                    <option value="found">Found Item</option>
-                  </select>
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="title" className="form-label">Title *</label>
-                  <input
-                    type="text"
-                    className={`form-control ${validationErrors.title ? 'is-invalid' : ''}`}
-                    id="title"
-                    name="title"
-                    value={title}
-                    onChange={onChange}
-                    placeholder="E.g. Blue Backpack, iPhone 12, etc."
-                    required
-                  />
-                  {validationErrors.title && (
-                    <div className="invalid-feedback">{validationErrors.title}</div>
-                  )}
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="categoryId" className="form-label">Category *</label>
-                  <select
-                    className={`form-select ${validationErrors.categoryId ? 'is-invalid' : ''}`}
-                    id="categoryId"
-                    name="categoryId"
-                    value={categoryId}
-                    onChange={onChange}
-                    required
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                  {validationErrors.categoryId && (
-                    <div className="invalid-feedback">{validationErrors.categoryId}</div>
-                  )}
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="description" className="form-label">Description *</label>
-                  <textarea
-                    className={`form-control ${validationErrors.description ? 'is-invalid' : ''}`}
-                    id="description"
-                    name="description"
-                    value={description}
-                    onChange={onChange}
-                    rows="3"
-                    placeholder="Provide any identifying details that might help"
-                    required
-                  ></textarea>
-                  {validationErrors.description && (
-                    <div className="invalid-feedback">{validationErrors.description}</div>
-                  )}
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="location" className="form-label">Location *</label>
-                  <input
-                    type="text"
-                    className={`form-control ${validationErrors.location ? 'is-invalid' : ''}`}
-                    id="location"
-                    name="location"
-                    value={location}
-                    onChange={onChange}
-                    placeholder="Where the item was lost or found"
-                    required
-                  />
-                  {validationErrors.location && (
-                    <div className="invalid-feedback">{validationErrors.location}</div>
-                  )}
-                </div>
-                
-                <div className="mb-3">
-                  <label htmlFor="dateLost" className="form-label">
-                    Date {status === 'lost' ? 'Lost' : 'Found'} *
-                  </label>
-                  <input
-                    type="date"
-                    className={`form-control ${validationErrors.dateLost ? 'is-invalid' : ''}`}
-                    id="dateLost"
-                    name="dateLost"
-                    value={dateLost}
-                    onChange={onChange}
-                    max={getTodayDate()}
-                    required
-                  />
-                  {validationErrors.dateLost && (
-                    <div className="invalid-feedback">{validationErrors.dateLost}</div>
-                  )}
-                  <div className="form-text">You cannot select future dates</div>
-                </div>
-
-                <div className="mb-3">
-                  <label htmlFor="image" className="form-label">Image (Optional)</label>
-                  <input
-                    type="file"
-                    className={`form-control ${validationErrors.image ? 'is-invalid' : ''}`}
-                    id="image"
-                    name="image"
-                    accept="image/*"
-                    onChange={onChange}
-                  />
-                  {validationErrors.image && (
-                    <div className="invalid-feedback">{validationErrors.image}</div>
-                  )}
-                  <div className="form-text">Maximum file size: 5MB. Supported formats: JPG, PNG, GIF, etc.</div>
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label htmlFor="status" className="form-label">Item Status</label>
+                    <select
+                      className="form-select"
+                      id="status"
+                      name="status"
+                      value={status}
+                      onChange={onChange}
+                      required
+                    >
+                      <option value="lost">Lost Item</option>
+                      <option value="found">Found Item</option>
+                    </select>
+                  </div>
                   
-                  {imagePreview && (
-                    <div className="mt-3">
-                      <div className="d-flex justify-content-between align-items-center mb-2">
-                        <small className="text-muted">Image Preview:</small>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={removeImage}
-                        >
-                          Remove Image
-                        </button>
+                  <div className="col-md-6">
+                    <label htmlFor="categoryId" className="form-label">Category *</label>
+                    <select
+                      className={`form-select ${validationErrors.categoryId ? 'is-invalid' : ''}`}
+                      id="categoryId"
+                      name="categoryId"
+                      value={categoryId}
+                      onChange={onChange}
+                      required
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map(category => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                    {validationErrors.categoryId && (
+                      <div className="invalid-feedback">{validationErrors.categoryId}</div>
+                    )}
+                  </div>
+                  
+                  <div className="col-md-6">
+                    <label htmlFor="title" className="form-label">Title *</label>
+                    <input
+                      type="text"
+                      className={`form-control ${validationErrors.title ? 'is-invalid' : ''}`}
+                      id="title"
+                      name="title"
+                      value={title}
+                      onChange={onChange}
+                      placeholder="E.g. Blue Backpack, iPhone 12, etc."
+                      required
+                    />
+                    {validationErrors.title && (
+                      <div className="invalid-feedback">{validationErrors.title}</div>
+                    )}
+                  </div>
+                  
+                  <div className="col-md-6">
+                    <label htmlFor="location" className="form-label">Location *</label>
+                    <input
+                      type="text"
+                      className={`form-control ${validationErrors.location ? 'is-invalid' : ''}`}
+                      id="location"
+                      name="location"
+                      value={location}
+                      onChange={onChange}
+                      placeholder="Where the item was lost or found"
+                      required
+                    />
+                    {validationErrors.location && (
+                      <div className="invalid-feedback">{validationErrors.location}</div>
+                    )}
+                  </div>
+                  
+                  <div className="col-md-6">
+                    <label htmlFor="dateLost" className="form-label">
+                      Date {status === 'lost' ? 'Lost' : 'Found'} *
+                    </label>
+                    <input
+                      type="date"
+                      className={`form-control ${validationErrors.dateLost ? 'is-invalid' : ''}`}
+                      id="dateLost"
+                      name="dateLost"
+                      value={dateLost}
+                      onChange={onChange}
+                      max={getTodayDate()}
+                      required
+                    />
+                    {validationErrors.dateLost && (
+                      <div className="invalid-feedback">{validationErrors.dateLost}</div>
+                    )}
+                    <div className="form-text">You cannot select future dates</div>
+                  </div>
+                  
+                  <div className="col-12">
+                    <label htmlFor="description" className="form-label">Description *</label>
+                    <textarea
+                      className={`form-control ${validationErrors.description ? 'is-invalid' : ''}`}
+                      id="description"
+                      name="description"
+                      value={description}
+                      onChange={onChange}
+                      rows="4"
+                      placeholder="Provide any identifying details that might help"
+                      required
+                    ></textarea>
+                    {validationErrors.description && (
+                      <div className="invalid-feedback">{validationErrors.description}</div>
+                    )}
+                  </div>
+                  
+                  <div className="col-12">
+                    <label htmlFor="image" className="form-label">Image (Optional)</label>
+                    <input
+                      type="file"
+                      className={`form-control ${validationErrors.image ? 'is-invalid' : ''}`}
+                      id="image"
+                      name="image"
+                      accept="image/*"
+                      onChange={onChange}
+                    />
+                    {validationErrors.image && (
+                      <div className="invalid-feedback">{validationErrors.image}</div>
+                    )}
+                    <div className="form-text">Maximum file size: 5MB. Supported formats: JPG, PNG, GIF, etc.</div>
+                    
+                    {imagePreview && (
+                      <div className="mt-3">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <small className="text-muted">Image Preview:</small>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-outline-danger"
+                            onClick={removeImage}
+                          >
+                            Remove Image
+                          </button>
+                        </div>
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="img-thumbnail"
+                          style={{ maxWidth: '240px', maxHeight: '240px' }}
+                        />
                       </div>
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="img-thumbnail"
-                        style={{ maxWidth: '200px', maxHeight: '200px' }}
-                      />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 
-                <div className="d-flex justify-content-between">
+                <div className="d-flex justify-content-between mt-4">
                   <button
                     type="button"
                     className="btn btn-secondary"
@@ -417,6 +438,38 @@ const ItemForm = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+        
+        <div className="col-lg-4">
+          <div className="form-helper-card p-4 h-100">
+            <h5 className="mb-3">Reporting tips</h5>
+            <ul className="list-unstyled d-flex flex-column gap-3">
+              <li className="d-flex gap-2">
+                <i className="bi bi-camera text-primary"></i>
+                <div>
+                  <strong>Add a clear photo</strong>
+                  <p className="text-muted mb-0">Photos help owners quickly verify the item.</p>
+                </div>
+              </li>
+              <li className="d-flex gap-2">
+                <i className="bi bi-geo-alt text-primary"></i>
+                <div>
+                  <strong>Be specific with location</strong>
+                  <p className="text-muted mb-0">Include building names or nearby landmarks.</p>
+                </div>
+              </li>
+              <li className="d-flex gap-2">
+                <i className="bi bi-clock text-primary"></i>
+                <div>
+                  <strong>Share the exact date</strong>
+                  <p className="text-muted mb-0">Accurate dates make searching faster.</p>
+                </div>
+              </li>
+            </ul>
+            <div className="alert alert-info mt-4 mb-0">
+              Need to update your profile? Complete your details to unlock notifications and contact sharing.
             </div>
           </div>
         </div>

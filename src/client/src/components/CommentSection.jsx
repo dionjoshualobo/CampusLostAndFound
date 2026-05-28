@@ -78,9 +78,12 @@ const CommentSection = ({ itemId, isAuthenticated }) => {
   
   return (
     <>
-      <div className="card mt-4">
+      <div className="card comment-card mt-4">
         <div className="card-body">
-          <h4 className="card-title">Comments</h4>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h4 className="card-title mb-0">Comments</h4>
+            <span className="badge bg-primary">{comments.length}</span>
+          </div>
           
           {error && <div className="alert alert-danger">{error}</div>}
           
@@ -90,7 +93,7 @@ const CommentSection = ({ itemId, isAuthenticated }) => {
                 <textarea
                   className="form-control"
                   rows="3"
-                  placeholder="Add a comment..."
+                  placeholder="Share an update or helpful detail..."
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   required
@@ -107,21 +110,25 @@ const CommentSection = ({ itemId, isAuthenticated }) => {
           )}
           
           {comments.length === 0 ? (
-            <div className="alert alert-info">No comments yet.</div>
+            <div className="empty-state">
+              <div className="empty-state-icon mb-2">💬</div>
+              <p className="mb-0 text-muted">No comments yet. Start the conversation.</p>
+            </div>
           ) : (
             <div className="comment-list">
               {comments.map(comment => (
-                <div key={comment.id} className="card mb-3">
+                <div key={comment.id} className="card comment-card mb-3">
                   <div className="card-body">
-                    <div className="d-flex justify-content-between">
-                      <h6 className="card-subtitle mb-2 text-muted">
-                        {comment.userName}
-                      </h6>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <i className="bi bi-person-circle text-primary"></i>
+                        <h6 className="mb-0">{comment.userName}</h6>
+                      </div>
                       <small className="text-muted">
                         {formatDate(comment.createdAt, true)}
                       </small>
                     </div>
-                    <p className="card-text">{comment.content}</p>
+                    <p className="card-text mb-2">{comment.content}</p>
                     {user.id === comment.userId && (
                       <button
                         className="btn btn-sm btn-outline-danger"

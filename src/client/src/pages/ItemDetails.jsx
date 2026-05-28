@@ -132,15 +132,7 @@ const ItemDetails = () => {
   if (error) return <div className="alert alert-danger">{error}</div>;
   if (!item) return <div className="alert alert-warning">Item not found</div>;
   
-  const statusClass = 
-    item.status === 'lost' ? 'item-status-lost' : 
-    item.status === 'found' ? 'item-status-found' : 
-    item.status === 'claimed' ? 'item-status-claimed' : 'item-status-resolved';
-  
-  const statusBadgeClass = 
-    item.status === 'lost' ? 'bg-danger' :
-    item.status === 'found' ? 'bg-primary' :
-    item.status === 'claimed' ? 'bg-warning' : 'bg-success';
+  const statusLabel = item.status?.toLowerCase() || 'lost';
   
   const isOwner = user && user.id === item.userId;
   const canClaimOrResolve = isAuthenticated && !isOwner && (item.status === 'lost' || item.status === 'found');
@@ -150,48 +142,72 @@ const ItemDetails = () => {
   return (
     <>
       <div className="row justify-content-center">
-        <div className="col-md-10">
-          <div className={`card ${statusClass}`}>
-            <div className="card-body">
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <h2 className="card-title">{item.title}</h2>
-                <span className={`badge ${statusBadgeClass}`}>
-                  {item.status.toUpperCase()}
-                </span>
+        <div className="col-lg-10">
+          <div className="card detail-card">
+            <div className="card-body p-4">
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
+                <div>
+                  <p className="text-muted mb-1">Item details</p>
+                  <h2 className="card-title mb-2">{item.title}</h2>
+                  <div className="d-flex flex-wrap gap-2">
+                    <span className={`badge-soft ${statusLabel}`}>{item.status.toUpperCase()}</span>
+                    <span className="detail-pill">
+                      <i className="bi bi-tag me-1"></i>
+                      {item.categoryName || 'Not specified'}
+                    </span>
+                    <span className="detail-pill">
+                      <i className="bi bi-geo-alt me-1"></i>
+                      {item.location || 'Not specified'}
+                    </span>
+                  </div>
+                </div>
+                <button className="btn btn-outline-secondary" onClick={() => navigate('/')}>
+                  Back to List
+                </button>
               </div>
               
-              <div className="row mb-4">
+              <div className="row g-3 mb-4">
                 <div className="col-md-4">
-                  <p><strong>Location:</strong> {item.location || 'Not specified'}</p>
+                  <div className="stats-card p-3">
+                    <p className="text-muted small mb-1">Date {item.status === 'lost' ? 'Lost' : 'Found'}</p>
+                    <h6 className="mb-0">{formatDate(item.dateLost)}</h6>
+                  </div>
                 </div>
                 <div className="col-md-4">
-                  <p>
-                    <strong>Date {item.status === 'lost' ? 'Lost' : 'Found'}:</strong> {formatDate(item.dateLost)}
-                  </p>
+                  <div className="stats-card p-3">
+                    <p className="text-muted small mb-1">Reported by</p>
+                    <h6 className="mb-0">{item.userName || 'Anonymous'}</h6>
+                    <small className="text-muted">On {formatDate(item.createdAt)}</small>
+                  </div>
                 </div>
                 <div className="col-md-4">
-                  <p><strong>Category:</strong> {item.categoryName || 'Not specified'}</p>
+                  <div className="stats-card p-3">
+                    <p className="text-muted small mb-1">Status</p>
+                    <h6 className="mb-0 text-capitalize">{item.status}</h6>
+                    {item.claimedAt && (
+                      <small className="text-muted">Updated {formatDate(item.claimedAt)}</small>
+                    )}
+                  </div>
                 </div>
               </div>
               
               <div className="mb-4">
                 <h5>Description</h5>
-                <p>{item.description || 'No description provided.'}</p>
+                <p className="mb-0">{item.description || 'No description provided.'}</p>
               </div>
 
-              {/* Image Gallery */}
               {item.images && item.images.length > 0 && (
                 <div className="mb-4">
-                  <h5>Images</h5>
-                  <div className="row">
+                  <h5 className="mb-3">Images</h5>
+                  <div className="row g-3">
                     {item.images.map((image, index) => (
-                      <div key={image.id} className="col-md-3 mb-3">
+                      <div key={image.id} className="col-sm-6 col-md-4">
                         <div className="position-relative">
                           <img
                             src={image.url}
                             alt={`${item.title} - Image ${index + 1}`}
-                            className="img-thumbnail cursor-pointer"
-                            style={{ width: '100%', height: '150px', objectFit: 'cover', cursor: 'pointer' }}
+                            className="img-fluid rounded-3 border"
+                            style={{ width: '100%', height: '180px', objectFit: 'cover', cursor: 'pointer' }}
                             onClick={() => openImageModal(index)}
                             onError={(e) => {
                               e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIE5vdCBGb3VuZDwvdGV4dD48L3N2Zz4=';
@@ -199,15 +215,14 @@ const ItemDetails = () => {
                           />
                           {isOwner && (
                             <button
-                              className="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                              className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteImage(image.id);
                               }}
                               title="Delete image"
-                              style={{ fontSize: '0.7rem', padding: '0.25rem 0.5rem' }}
                             >
-                              ×
+                              <i className="bi bi-trash"></i>
                             </button>
                           )}
                         </div>
@@ -218,13 +233,9 @@ const ItemDetails = () => {
               )}
               
               <div className="mb-3">
-                <p className="text-muted">
-                  Reported by: {item.userName || 'Anonymous'}
-                </p>
-                
                 {item.claimedByName && (
-                  <div className="d-flex align-items-center">
-                    <p className="text-muted mb-0 me-3">
+                  <div className="d-flex align-items-center flex-wrap gap-2">
+                    <p className="text-muted mb-0">
                       {item.status === 'claimed' ? 'Claimed by' : 'Resolved by'}: {item.claimedByName}
                       {item.claimedAt && ` on ${formatDate(item.claimedAt)}`}
                     </p>
@@ -244,18 +255,11 @@ const ItemDetails = () => {
               {error && <div className="alert alert-danger">{error}</div>}
               {success && <div className="alert alert-success">{success}</div>}
               
-              <div className="d-flex justify-content-between">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => navigate('/')}
-                >
-                  Back to List
-                </button>
-                
-                <div>
+              <div className="d-flex flex-wrap justify-content-between gap-2">
+                <div className="d-flex flex-wrap gap-2">
                   {canClaimOrResolve && (
                     <button
-                      className={`btn ${item.status === 'lost' ? 'btn-success' : 'btn-primary'} me-2`}
+                      className={`btn ${item.status === 'lost' ? 'btn-success' : 'btn-primary'}`}
                       onClick={() => handleClaimOrResolve('notify')}
                       disabled={isClaiming}
                     >
@@ -265,24 +269,24 @@ const ItemDetails = () => {
                   
                   {isOwner && isActiveItem && (
                     <button
-                      className="btn btn-info me-2"
+                      className="btn btn-info"
                       onClick={() => handleClaimOrResolve('resolve')}
                       disabled={isClaiming}
                     >
                       {isClaiming ? 'Processing...' : 'Mark as Resolved'}
                     </button>
                   )}
-                  
-                  {isOwner && (
-                    <button
-                      className="btn btn-danger"
-                      onClick={handleDelete}
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? 'Deleting...' : 'Delete Item'}
-                    </button>
-                  )}
                 </div>
+                
+                {isOwner && (
+                  <button
+                    className="btn btn-danger"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete Item'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

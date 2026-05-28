@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getUserProfile, updateUserProfile } from '../api';
 import { formatDate } from '../utils/dateUtils';
-import { isProfileComplete, validateContactInfo } from '../utils/profileUtils';
+import { getMissingFields, isProfileComplete, validateContactInfo } from '../utils/profileUtils';
 
 // List of department options
 const departments = [
@@ -34,6 +34,15 @@ const Profile = ({ refreshUserProfile }) => {
   const [searchParams] = useSearchParams();
   const [showCompletionAlert, setShowCompletionAlert] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
+  const requiredFieldCount = profileData.userType === 'student' ? 5 : 4;
+  const missingFields = getMissingFields({
+    ...profileData,
+    userType: profileData.userType
+  });
+  const completionPercent = Math.max(
+    0,
+    Math.round(((requiredFieldCount - missingFields.length) / requiredFieldCount) * 100)
+  );
   
   // Check if user was redirected here for profile completion
   useEffect(() => {
@@ -188,21 +197,63 @@ const Profile = ({ refreshUserProfile }) => {
       <div className="col-md-3">
         <div className="list-group mb-4">
           <button
-            className={`list-group-item list-group-item-action ${activeTab === 'profile' ? 'active' : ''}`}
+            className={`list-group-item list-group-item-action d-flex align-items-center gap-2 ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
+            <i className="bi bi-person-lines-fill"></i>
             Profile Information
           </button>
           <button
-            className={`list-group-item list-group-item-action ${activeTab === 'items' ? 'active' : ''}`}
+            className={`list-group-item list-group-item-action d-flex align-items-center gap-2 ${activeTab === 'items' ? 'active' : ''}`}
             onClick={() => setActiveTab('items')}
           >
+            <i className="bi bi-collection"></i>
             My Items
           </button>
         </div>
       </div>
       
       <div className="col-md-9">
+        <div className="card profile-summary p-4 mb-4">
+          <div className="d-flex align-items-center gap-3">
+            <span className="stats-icon"><i className="bi bi-person-circle"></i></span>
+            <div>
+              <h4 className="mb-1">{profileData.name || 'Your Profile'}</h4>
+              <p className="text-muted mb-0">{profileData.email || 'Update your profile details'}</p>
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="d-flex justify-content-between align-items-center mb-2">
+              <small className="text-muted">Profile completion</small>
+              <small className="fw-semibold">{completionPercent}%</small>
+            </div>
+            <div className="progress" style={{ height: '8px' }}>
+              <div
+                className="progress-bar"
+                role="progressbar"
+                style={{ width: `${completionPercent}%` }}
+                aria-valuenow={completionPercent}
+                aria-valuemin="0"
+                aria-valuemax="100"
+              ></div>
+            </div>
+            {missingFields.length > 0 ? (
+              <div className="d-flex flex-wrap gap-2 mt-3">
+                {missingFields.map((field, index) => (
+                  <span key={index} className="badge bg-warning text-dark">
+                    {field} required
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3 text-success fw-semibold">
+                <i className="bi bi-check-circle me-1"></i>
+                Profile complete
+              </div>
+            )}
+          </div>
+        </div>
+
         {showCompletionAlert && (
           <div className="alert alert-warning alert-dismissible fade show" role="alert">
             <strong>Profile completion required!</strong> Please fill in all the required fields below to access all features of the platform.
