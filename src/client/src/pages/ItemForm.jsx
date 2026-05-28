@@ -24,7 +24,10 @@ const ItemForm = () => {
   const [imagePreview, setImagePreview] = useState(null);
   
   const { title, description, status, location, dateLost, categoryId, image } = formData;
-  const safeImagePreview = imagePreview && imagePreview.startsWith('blob:') ? imagePreview : null;
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const blobImagePreview = image && allowedImageTypes.includes(image.type) && imagePreview?.startsWith('blob:')
+    ? imagePreview
+    : null;
   
   // Get today's date in YYYY-MM-DD format for max date
   const getTodayDate = () => {
@@ -75,7 +78,7 @@ const ItemForm = () => {
         status: statusParam
       }));
     }
-  }, [searchParams, setFormData]);
+  }, [searchParams]);
 
   // Cleanup image preview URL when component unmounts
   useEffect(() => {
@@ -117,11 +120,11 @@ const ItemForm = () => {
           return;
         }
         
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
+        // Validate file type (exclude SVG for safety)
+        if (!allowedImageTypes.includes(file.type)) {
           setValidationErrors(prev => ({
             ...prev,
-            image: 'Please select a valid image file'
+            image: 'Please upload a JPG, PNG, GIF, or WebP image'
           }));
           return;
         }
@@ -391,7 +394,7 @@ const ItemForm = () => {
                       className={`form-control ${validationErrors.image ? 'is-invalid' : ''}`}
                       id="image"
                       name="image"
-                      accept="image/*"
+                      accept="image/png, image/jpeg, image/gif, image/webp"
                       onChange={onChange}
                     />
                     {validationErrors.image && (
@@ -399,7 +402,7 @@ const ItemForm = () => {
                     )}
                     <div className="form-text">Maximum file size: 5MB. Supported formats: JPG, PNG, GIF, etc.</div>
                     
-                    {safeImagePreview && (
+                    {blobImagePreview && (
                       <div className="mt-3">
                         <div className="d-flex justify-content-between align-items-center mb-2">
                           <small className="text-muted">Image Preview:</small>
@@ -412,7 +415,7 @@ const ItemForm = () => {
                           </button>
                         </div>
                         <img
-                          src={safeImagePreview}
+                          src={blobImagePreview}
                           alt="Preview"
                           className="img-thumbnail"
                           style={{ maxWidth: '240px', maxHeight: '240px' }}

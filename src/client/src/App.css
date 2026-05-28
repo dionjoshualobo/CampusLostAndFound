@@ -478,6 +478,13 @@ a:hover {
   box-shadow: var(--shadow) !important;
 }
 
+.chip-badge {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 /* Enhanced status styling with better visual hierarchy */
 .item-status-lost {
   background: linear-gradient(135deg, #f8d7da, #f1aeb5);

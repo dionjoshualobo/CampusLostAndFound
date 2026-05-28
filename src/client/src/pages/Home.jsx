@@ -118,7 +118,7 @@ const Home = () => {
             </div>
             <div className="d-flex flex-wrap gap-2 mt-4">
               {topCategories.map(category => (
-                <span key={category.id} className="badge bg-custom border-custom text-muted-custom">
+                <span key={category.id} className="badge chip-badge">
                   {category.name} • {category.count}
                 </span>
               ))}

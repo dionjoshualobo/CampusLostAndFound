@@ -220,6 +220,7 @@ const ItemDetails = () => {
                                 handleDeleteImage(image.id);
                               }}
                               title="Delete image"
+                              aria-label="Delete image"
                             >
                               <i className="bi bi-trash"></i>
                             </button>
