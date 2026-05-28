@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getUserProfile, updateUserProfile } from '../api';
 import { formatDate } from '../utils/dateUtils';
@@ -34,15 +34,22 @@ const Profile = ({ refreshUserProfile }) => {
   const [searchParams] = useSearchParams();
   const [showCompletionAlert, setShowCompletionAlert] = useState(false);
   const [validationErrors, setValidationErrors] = useState({});
-  const requiredFieldCount = profileData.userType === 'student' ? 5 : 4;
-  const missingFields = getMissingFields({
-    ...profileData,
-    userType: profileData.userType
-  });
-  const completionPercent = Math.max(
-    0,
-    Math.round(((requiredFieldCount - missingFields.length) / requiredFieldCount) * 100)
+  const requiredFieldCount = useMemo(
+    () => (profileData.userType === 'student' ? 5 : 4),
+    [profileData.userType]
   );
+  const missingFields = useMemo(() => {
+    return getMissingFields({
+      ...profileData,
+      userType: profileData.userType
+    });
+  }, [profileData]);
+  const completionPercent = useMemo(() => {
+    return Math.max(
+      0,
+      Math.round(((requiredFieldCount - missingFields.length) / requiredFieldCount) * 100)
+    );
+  }, [missingFields, requiredFieldCount]);
   
   // Check if user was redirected here for profile completion
   useEffect(() => {

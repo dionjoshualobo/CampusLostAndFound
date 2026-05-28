@@ -9,7 +9,11 @@ const ItemCard = ({ item }) => {
     <div className="item-card">
       <div className="item-card__image">
         {primaryImage ? (
-          <img src={primaryImage} alt={item.title} loading="lazy" />
+          <img
+            src={primaryImage}
+            alt={`${item.status || 'Item'}: ${item.title}`}
+            loading="lazy"
+          />
         ) : (
           <div className="item-card__placeholder">
             <i className="bi bi-image"></i>

@@ -206,8 +206,7 @@ const ItemDetails = () => {
                           <img
                             src={image.url}
                             alt={`${item.title} - Image ${index + 1}`}
-                            className="img-fluid rounded-3 border"
-                            style={{ width: '100%', height: '180px', objectFit: 'cover', cursor: 'pointer' }}
+                            className="img-fluid rounded-3 border detail-image"
                             onClick={() => openImageModal(index)}
                             onError={(e) => {
                               e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZGRkIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIE5vdCBGb3VuZDwvdGV4dD48L3N2Zz4=';

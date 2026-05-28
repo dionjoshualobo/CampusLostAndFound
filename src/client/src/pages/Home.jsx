@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getItems, getCategories } from '../api';
 import ItemCard from '../components/ItemCard';
@@ -43,40 +43,46 @@ const Home = () => {
     fetchData();
   }, []);
   
-  const filteredItems = items.filter(item => {
-    const matchesStatusFilter = filter === 'all' || item.status === filter;
-    const matchesCategoryFilter = categoryFilter === 'all' || 
-                                 (item.categoryId && item.categoryId.toString() === categoryFilter);
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          item.location?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesImages = !showImagesOnly || (item.images && item.images.length > 0);
-    
-    return matchesStatusFilter && matchesCategoryFilter && matchesSearch && matchesImages;
-  });
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      const matchesStatusFilter = filter === 'all' || item.status === filter;
+      const matchesCategoryFilter = categoryFilter === 'all' || 
+                                   (item.categoryId && item.categoryId.toString() === categoryFilter);
+      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            item.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            item.location?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesImages = !showImagesOnly || (item.images && item.images.length > 0);
+      
+      return matchesStatusFilter && matchesCategoryFilter && matchesSearch && matchesImages;
+    });
+  }, [items, filter, categoryFilter, searchTerm, showImagesOnly]);
 
-  const sortedItems = [...filteredItems].sort((a, b) => {
-    const dateA = new Date(a.createdAt || a.dateLost || 0);
-    const dateB = new Date(b.createdAt || b.dateLost || 0);
-    
-    if (sortBy === 'oldest') {
-      return dateA - dateB;
-    }
-    
-    return dateB - dateA;
-  });
+  const sortedItems = useMemo(() => {
+    return [...filteredItems].sort((a, b) => {
+      const dateA = new Date(a.createdAt || a.dateLost || 0);
+      const dateB = new Date(b.createdAt || b.dateLost || 0);
+      
+      if (sortBy === 'oldest') {
+        return dateA - dateB;
+      }
+      
+      return dateB - dateA;
+    });
+  }, [filteredItems, sortBy]);
 
   const totalItems = items.length;
   const activeItems = items.filter(item => item.status === 'lost' || item.status === 'found').length;
   const resolvedItems = items.filter(item => item.status === 'resolved').length;
   const imageItems = items.filter(item => item.images && item.images.length > 0).length;
 
-  const categoryCounts = categories.map(category => {
-    const count = items.filter(item => item.categoryId?.toString() === category.id.toString()).length;
-    return { ...category, count };
-  }).sort((a, b) => b.count - a.count);
+  const categoryCounts = useMemo(() => {
+    return categories.map(category => {
+      const count = items.filter(item => item.categoryId?.toString() === category.id.toString()).length;
+      return { ...category, count };
+    }).sort((a, b) => b.count - a.count);
+  }, [categories, items]);
 
-  const topCategories = categoryCounts.slice(0, 5);
+  const topCategories = useMemo(() => categoryCounts.slice(0, 5), [categoryCounts]);
   const hasActiveFilters = filter !== 'all' || categoryFilter !== 'all' || searchTerm || showImagesOnly || sortBy !== 'newest';
   
   const clearFilters = () => {

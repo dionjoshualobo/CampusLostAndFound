@@ -500,22 +500,26 @@ export const createItem = async (itemData) => {
       if (uploadError) {
         console.error('Error uploading image:', uploadError);
       } else {
-        const { data: { publicUrl } } = supabase.storage
+        const { data: urlData } = supabase.storage
           .from('lost-and-found-images')
           .getPublicUrl(filePath);
 
-        const { error: imageError } = await supabase
-          .from('item_images')
-          .insert({
-            itemid: data.id,
-            imageurl: publicUrl,
-            filename: fileName,
-            filesize: file.size,
-            mimetype: file.type
-          });
+        if (!urlData?.publicUrl) {
+          console.error('Failed to resolve public image URL');
+        } else {
+          const { error: imageError } = await supabase
+            .from('item_images')
+            .insert({
+              itemid: data.id,
+              imageurl: urlData.publicUrl,
+              filename: fileName,
+              filesize: file.size,
+              mimetype: file.type
+            });
 
-        if (imageError) {
-          console.error('Error saving image metadata:', imageError);
+          if (imageError) {
+            console.error('Error saving image metadata:', imageError);
+          }
         }
       }
     }
@@ -671,6 +675,7 @@ export const deleteItemImage = async (itemId, imageId) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
+    if (!itemId) throw new Error('Item ID is required to delete an image');
 
     const { data: imageData, error: fetchError } = await supabase
       .from('item_images')
