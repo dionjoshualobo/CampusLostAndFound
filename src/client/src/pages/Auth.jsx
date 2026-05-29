@@ -36,14 +36,45 @@ const Auth = ({ user }) => {
   };
 
   return (
-    <div className="container">
-      <div className="row justify-content-center">
-        <div className="col-md-6 col-lg-4">
-          <div className="card shadow">
+    <div className="auth-page">
+      <div className="row g-4 align-items-stretch">
+        <div className="col-lg-6">
+          <div className="auth-side h-100">
+            <h2 className="mb-3">Welcome back to Campus Lost & Found</h2>
+            <p className="text-muted mb-4">
+              Keep the community connected with fast reporting, trusted profiles, and photo-first listings.
+            </p>
+            <div className="d-flex flex-column gap-3">
+              <div className="auth-feature">
+                <span className="stats-icon"><i className="bi bi-shield-check"></i></span>
+                <div>
+                  <h6 className="mb-1">Verified profiles</h6>
+                  <p className="text-muted mb-0">Reach the right owner securely with profile-based contact sharing.</p>
+                </div>
+              </div>
+              <div className="auth-feature">
+                <span className="stats-icon"><i className="bi bi-camera"></i></span>
+                <div>
+                  <h6 className="mb-1">Photo rich reports</h6>
+                  <p className="text-muted mb-0">Make items easier to identify by adding photos and key details.</p>
+                </div>
+              </div>
+              <div className="auth-feature">
+                <span className="stats-icon"><i className="bi bi-bell"></i></span>
+                <div>
+                  <h6 className="mb-1">Real-time updates</h6>
+                  <p className="text-muted mb-0">Stay informed with notifications when someone responds.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="col-lg-6">
+          <div className="auth-card card h-100">
             <div className="card-body text-center p-5">
-              <h2 className="card-title mb-4">Welcome to Campus Lost & Found</h2>
+              <h2 className="card-title mb-3">Sign in to continue</h2>
               <p className="text-muted mb-4">
-                Sign in with your Google account to report lost items, post found items, and connect with your campus community.
+                Use your campus Google account to report items, track responses, and manage your profile.
               </p>
               
               {error && (

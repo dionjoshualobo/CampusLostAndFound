@@ -23,8 +23,11 @@ const ProfileCompletionModal = ({ isOpen, onClose, user, actionDescription }) =>
           </div>
           
           <div className="modal-body">
-            <div className="alert alert-info">
-              <strong>Profile completion is mandatory</strong> to {actionDescription}.
+            <div className="alert alert-info d-flex align-items-center gap-2">
+              <i className="bi bi-info-circle"></i>
+              <div>
+                <strong>Profile completion is mandatory</strong> to {actionDescription}.
+              </div>
             </div>
             
             <p>To continue, please complete the following required fields in your profile:</p>

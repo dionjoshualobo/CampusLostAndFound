@@ -91,7 +91,7 @@ const NotificationDropdown = () => {
     <>
       <div className={`dropdown${isOpen ? ' show' : ''}`} ref={dropdownRef}>
         <button
-          className="btn btn-link nav-link position-relative"
+          className="btn btn-outline-secondary position-relative"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
         >
@@ -118,19 +118,19 @@ const NotificationDropdown = () => {
               {notifications.map(notification => (
                 <div
                   key={notification.id}
-                  className={`dropdown-item d-flex align-items-center ${!notification.isRead ? 'bg-light' : ''}`}
+                  className={`notification-item ${!notification.isRead ? 'unread' : ''}`}
                 >
                   <div className="flex-grow-1">
                     <Link
                       to={`/items/${notification.itemId}`}
                       onClick={() => handleMarkAsRead(notification.id)}
-                      className="text-decoration-none text-dark"
+                      className="text-decoration-none text-reset"
                     >
-                      <p className="mb-1">{notification.message}</p>
+                      <p className="mb-1 fw-semibold">{notification.message}</p>
                       <small className="text-muted">{formatDate(notification.createdAt, true)}</small>
                     </Link>
 
-                    <div className="mt-1">
+                    <div className="mt-2">
                       <button
                         className="btn btn-sm btn-link px-0 text-primary"
                         onClick={(e) => handleViewContact(notification.senderId, e)}

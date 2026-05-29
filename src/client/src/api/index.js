@@ -17,41 +17,30 @@ const createResponse = (data, error = null) => {
 // Items APIs
 export const getItems = async () => {
   try {
-    // First get all items
-    const { data: items, error: itemsError } = await supabase
+    const { data, error } = await supabase
       .from('items')
-      .select('*')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        location,
+        datelost,
+        categoryid,
+        userid,
+        claimedby,
+        claimedat,
+        createdat,
+        profiles:userid (name),
+        categories:categoryid (name),
+        claimer_profile:claimedby (name),
+        item_images (id, imageurl, filename)
+      `)
       .order('createdat', { ascending: false });
 
-    if (itemsError) throw itemsError;
+    if (error) throw error;
 
-    // Get all profiles to map names
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id, name');
-
-    if (profilesError) throw profilesError;
-
-    // Get all categories to map names
-    const { data: categories, error: categoriesError } = await supabase
-      .from('categories')
-      .select('id, name');
-
-    if (categoriesError) throw categoriesError;
-
-    // Create lookup maps
-    const profileMap = (profiles || []).reduce((map, profile) => {
-      map[profile.id] = profile.name;
-      return map;
-    }, {});
-
-    const categoryMap = (categories || []).reduce((map, category) => {
-      map[category.id] = category.name;
-      return map;
-    }, {});
-
-    // Transform the data to match expected format
-    const transformedItems = (items || []).map(item => ({
+    const transformedItems = (data || []).map(item => ({
       id: item.id,
       title: item.title,
       description: item.description,
@@ -63,10 +52,14 @@ export const getItems = async () => {
       claimedBy: item.claimedby,
       claimedAt: item.claimedat,
       createdAt: item.createdat,
-      userName: profileMap[item.userid] || null,
-      categoryName: categoryMap[item.categoryid] || null,
-      claimedByName: profileMap[item.claimedby] || null,
-      images: [] // We'll handle images separately if needed
+      userName: item.profiles?.name || null,
+      categoryName: item.categories?.name || null,
+      claimedByName: item.claimer_profile?.name || null,
+      images: (item.item_images || []).map(img => ({
+        id: img.id,
+        url: img.imageurl,
+        filename: img.filename
+      }))
     }));
 
     return createResponse(transformedItems);
@@ -407,12 +400,20 @@ export const getUserContact = async (userId) => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, email, contactinfo')
+      .select('id, name, email, usertype, department, semester, contactinfo')
       .eq('id', userId)
       .single();
 
     if (error) throw error;
-    return createResponse(data);
+    return createResponse({
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      userType: data.usertype,
+      department: data.department,
+      semester: data.semester,
+      contactInfo: data.contactinfo
+    });
   } catch (error) {
     console.error('Error fetching user contact:', error);
     return createResponse(null, error);
@@ -424,7 +425,7 @@ export const getItemStats = async () => {
   try {
     const { data, error } = await supabase
       .from('items')
-      .select('status');
+      .select('status, createdat');
 
     if (error) throw error;
 
@@ -439,8 +440,18 @@ export const getItemStats = async () => {
       status,
       count: count.toString()
     }));
+    const totalCount = (data || []).length;
+    const activeCount = (statusCounts.lost || 0) + (statusCounts.found || 0);
+    const recentThreshold = new Date();
+    recentThreshold.setDate(recentThreshold.getDate() - 7);
+    const recentCount = (data || []).filter(item => item.createdat && new Date(item.createdat) >= recentThreshold).length;
 
-    return createResponse({ statusCounts: statusCountsArray });
+    return createResponse({ 
+      statusCounts: statusCountsArray,
+      totalCount,
+      activeCount,
+      recentCount
+    });
   } catch (error) {
     console.error('Error fetching item stats:', error);
     return createResponse(null, error);
@@ -470,6 +481,49 @@ export const createItem = async (itemData) => {
       .single();
 
     if (error) throw error;
+
+    if (itemData.image) {
+      const file = itemData.image;
+      const fileExtension = file.name.split('.').pop();
+      const uniqueId = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      const fileName = `${uniqueId}.${fileExtension}`;
+      const filePath = `item-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('lost-and-found-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('lost-and-found-images')
+          .getPublicUrl(filePath);
+
+        if (!urlData?.publicUrl) {
+          console.error('Failed to resolve public image URL');
+        } else {
+          const { error: imageError } = await supabase
+            .from('item_images')
+            .insert({
+              itemid: data.id,
+              imageurl: urlData.publicUrl,
+              filename: fileName,
+              filesize: file.size,
+              mimetype: file.type
+            });
+
+          if (imageError) {
+            console.error('Error saving image metadata:', imageError);
+          }
+        }
+      }
+    }
+
     return createResponse(data);
   } catch (error) {
     console.error('Error creating item:', error);
@@ -496,39 +550,165 @@ export const deleteItem = async (itemId) => {
   }
 };
 
-export const claimItem = async (itemId) => {
+export const claimItem = async (itemId, action = 'notify') => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { error } = await supabase
+    const { data: item, error: itemError } = await supabase
       .from('items')
-      .update({
-        status: 'resolved',
-        claimedby: user.id,
-        claimedat: new Date().toISOString()
-      })
-      .eq('id', itemId);
+      .select('*')
+      .eq('id', itemId)
+      .single();
 
-    if (error) throw error;
-    return createResponse({ message: 'Item claimed successfully' });
+    if (itemError) throw itemError;
+
+    const { data: currentUser } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', user.id)
+      .single();
+
+    const userName = currentUser?.name || 'A user';
+
+    if (action === 'notify') {
+      const message = item.status === 'lost'
+        ? `${userName} says they found your lost item "${item.title}"`
+        : `${userName} says they lost your found item "${item.title}"`;
+
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          userid: item.userid,
+          senderid: user.id,
+          itemid: item.id,
+          message
+        });
+
+      if (notificationError) {
+        console.error('Error creating notification:', notificationError);
+      }
+
+      const { error: updateError } = await supabase
+        .from('items')
+        .update({
+          claimedby: user.id,
+          claimedat: new Date().toISOString()
+        })
+        .eq('id', itemId);
+
+      if (updateError) throw updateError;
+    } else if (action === 'resolve') {
+      if (item.userid !== user.id) {
+        throw new Error('Only the reporter can resolve this item');
+      }
+
+      const { error: resolveError } = await supabase
+        .from('items')
+        .update({
+          status: 'resolved',
+          claimedby: user.id,
+          claimedat: new Date().toISOString()
+        })
+        .eq('id', itemId);
+
+      if (resolveError) throw resolveError;
+    } else {
+      throw new Error('Invalid action');
+    }
+
+    const { data: updatedItem, error: fetchError } = await supabase
+      .from('items')
+      .select(`
+        id,
+        title,
+        description,
+        status,
+        location,
+        datelost,
+        categoryid,
+        userid,
+        claimedby,
+        claimedat,
+        createdat,
+        profiles:userid (name),
+        categories:categoryid (name),
+        claimer_profile:claimedby (name),
+        item_images (id, imageurl, filename)
+      `)
+      .eq('id', itemId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const transformedItem = {
+      id: updatedItem.id,
+      title: updatedItem.title,
+      description: updatedItem.description,
+      status: updatedItem.status,
+      location: updatedItem.location,
+      dateLost: updatedItem.datelost,
+      categoryId: updatedItem.categoryid,
+      userId: updatedItem.userid,
+      claimedBy: updatedItem.claimedby,
+      claimedAt: updatedItem.claimedat,
+      createdAt: updatedItem.createdat,
+      userName: updatedItem.profiles?.name || null,
+      categoryName: updatedItem.categories?.name || null,
+      claimedByName: updatedItem.claimer_profile?.name || null,
+      images: (updatedItem.item_images || []).map(img => ({
+        id: img.id,
+        url: img.imageurl,
+        filename: img.filename
+      })),
+      notificationSent: action === 'notify'
+    };
+
+    return createResponse(transformedItem);
   } catch (error) {
     console.error('Error claiming item:', error);
     return createResponse(null, error);
   }
 };
 
-export const deleteItemImage = async (imageId) => {
+export const deleteItemImage = async (itemId, imageId) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
+    if (!itemId) throw new Error('Item ID is required to delete an image');
 
-    const { error } = await supabase
+    const { data: imageData, error: fetchError } = await supabase
+      .from('item_images')
+      .select('id, filename')
+      .eq('id', imageId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    let deleteQuery = supabase
       .from('item_images')
       .delete()
       .eq('id', imageId);
 
+    if (itemId) {
+      deleteQuery = deleteQuery.eq('itemid', itemId);
+    }
+
+    const { error } = await deleteQuery;
+
     if (error) throw error;
+
+    if (imageData?.filename) {
+      const filePath = `item-images/${imageData.filename}`;
+      const { error: storageError } = await supabase.storage
+        .from('lost-and-found-images')
+        .remove([filePath]);
+
+      if (storageError) {
+        console.error('Error deleting image from storage:', storageError);
+      }
+    }
+
     return createResponse({ message: 'Image deleted successfully' });
   } catch (error) {
     console.error('Error deleting image:', error);

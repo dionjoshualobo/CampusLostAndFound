@@ -14,10 +14,14 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-light sticky-top">
+    <nav className="navbar navbar-expand-lg navbar-light sticky-top">
       <div className="container">
-        <Link className="navbar-brand fw-bold" to="/">
-          🎓 Campus Lost & Found
+        <Link className="navbar-brand fw-bold d-flex align-items-center gap-2" to="/">
+          <span className="brand-icon">🎒</span>
+          <span className="d-flex flex-column lh-sm">
+            <span>Campus Lost & Found</span>
+            <small className="text-muted d-none d-lg-block">Reconnect items in minutes</small>
+          </span>
         </Link>
         
         <button 
@@ -59,43 +63,49 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
             {isAuthenticated && <NotificationDropdown />}
             
             {isAuthenticated ? (
-              <div className="dropdown">
-                <button 
-                  className={`btn btn-outline-primary dropdown-toggle position-relative ${profileIncomplete ? 'btn-outline-warning' : ''}`}
-                  type="button" 
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                >
-                  <i className="bi bi-person-circle me-1"></i>
-                  {user?.name || 'User'}
-                  {profileIncomplete && (
-                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
-                      !
-                    </span>
-                  )}
-                </button>
-                <ul className="dropdown-menu dropdown-menu-end">
-                  <li>
-                    <Link 
-                      className={`dropdown-item ${profileIncomplete ? 'text-warning fw-bold' : ''}`} 
-                      to="/profile"
-                    >
-                      <i className="bi bi-person me-2"></i>
-                      Profile {profileIncomplete && '(Incomplete)'}
-                    </Link>
-                  </li>
-                  <li><hr className="dropdown-divider" /></li>
-                  <li>
-                    <button className="dropdown-item" onClick={handleLogout}>
-                      <i className="bi bi-box-arrow-right me-2"></i>
-                      Logout
-                    </button>
-                  </li>
-                </ul>
-              </div>
+              <>
+                <Link className="btn btn-primary btn-sm d-none d-lg-inline-flex" to="/items/new">
+                  <i className="bi bi-plus-circle me-1"></i>
+                  Report Item
+                </Link>
+                <div className="dropdown">
+                  <button 
+                    className={`btn btn-outline-primary dropdown-toggle position-relative ${profileIncomplete ? 'btn-outline-warning' : ''}`}
+                    type="button" 
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
+                    <i className="bi bi-person-circle me-1"></i>
+                    {user?.name || 'User'}
+                    {profileIncomplete && (
+                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning">
+                        !
+                      </span>
+                    )}
+                  </button>
+                  <ul className="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <Link 
+                        className={`dropdown-item ${profileIncomplete ? 'text-warning fw-bold' : ''}`} 
+                        to="/profile"
+                      >
+                        <i className="bi bi-person me-2"></i>
+                        Profile {profileIncomplete && '(Incomplete)'}
+                      </Link>
+                    </li>
+                    <li><hr className="dropdown-divider" /></li>
+                    <li>
+                      <button className="dropdown-item" onClick={handleLogout}>
+                        <i className="bi bi-box-arrow-right me-2"></i>
+                        Logout
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </>
             ) : (
               <div className="d-flex gap-2">
-                <Link className="btn btn-primary" to="/auth">
+                <Link className="btn btn-primary btn-sm" to="/auth">
                   <i className="bi bi-google me-1"></i>
                   Sign In
                 </Link>
