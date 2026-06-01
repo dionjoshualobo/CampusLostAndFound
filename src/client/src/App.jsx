@@ -23,18 +23,18 @@ function App() {
   const loadUserProfile = async (authUser) => {
     try {
       const profileResponse = await getUserProfile();
-      const profile = profileResponse.data.profile;
+      const profile = profileResponse.data.user;
       
       return {
         id: authUser.id,
         email: authUser.email,
         name: profile?.name || authUser.user_metadata?.full_name || authUser.user_metadata?.name || '',
         avatar_url: authUser.user_metadata?.avatar_url || '',
-        userType: profile?.usertype || null,
+        userType: profile?.userType || null,
         department: profile?.department || null,
-        semester: profile?.semester || null,
-        contactInfo: profile?.contactinfo || null,
-        profile_completed: profile?.profile_completed || false
+        semester: profile?.semester ?? null,
+        contactInfo: profile?.contactInfo || null,
+        profile_completed: profile?.profile_completed ?? false
       };
     } catch (error) {
       console.error('Error loading user profile:', error);

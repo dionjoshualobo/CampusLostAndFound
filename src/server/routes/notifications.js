@@ -86,15 +86,28 @@ router.put('/:id/read', auth, async (req, res) => {
 // Delete notification
 router.delete('/:id', auth, async (req, res) => {
   try {
-    // Verify the notification belongs to the user
-    const result = await db.query('SELECT * FROM notifications WHERE id = $1 AND userid = $2', 
-      [req.params.id, req.user.id]);
+    // Verify the notification belongs to the user using Supabase
+    const { data: notification, error: fetchError } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('id', req.params.id)
+      .eq('userid', req.user.id)
+      .single();
     
-    if (result.rows.length === 0) {
+    if (fetchError || !notification) {
       return res.status(404).json({ message: 'Notification not found' });
     }
     
-    await db.query('DELETE FROM notifications WHERE id = $1', [req.params.id]);
+    const { error: deleteError } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('userid', req.user.id);
+
+    if (deleteError) {
+      console.error('Error deleting notification:', deleteError);
+      return res.status(500).json({ message: 'Error deleting notification', error: deleteError.message });
+    }
     
     res.json({ message: 'Notification deleted successfully' });
   } catch (error) {
