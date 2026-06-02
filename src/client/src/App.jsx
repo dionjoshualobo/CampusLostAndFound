@@ -17,7 +17,13 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const savedDarkMode = localStorage.getItem('darkMode');
+    if (savedDarkMode) {
+      return JSON.parse(savedDarkMode);
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   
   // Helper function to load complete user profile data
   const loadUserProfile = async (authUser) => {
@@ -103,18 +109,7 @@ function App() {
       }
     );
 
-    // Check for saved dark mode preference
-    const savedDarkMode = localStorage.getItem('darkMode');
-    if (savedDarkMode) {
-      const isDark = JSON.parse(savedDarkMode);
-      setIsDarkMode(isDark);
-      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(prefersDark);
-      document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-    }
-
+    // Remove the redundant checking of dark mode here, since it's now initialized in useState.
     return () => subscription.unsubscribe();
   }, []);
   

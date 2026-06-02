@@ -279,9 +279,11 @@ const Profile = ({ refreshUserProfile }) => {
           <div className="card">
             <div className="card-header">Profile Information</div>
             <div className="card-body">
-              <div className="alert alert-info mb-4">
-                <strong>All fields are mandatory.</strong> Complete your profile to access all platform features.
-              </div>
+              {missingFields.length > 0 && (
+                <div className="alert alert-info mb-4">
+                  <strong>All fields are mandatory.</strong> Complete your profile to access all platform features.
+                </div>
+              )}
               
               <form onSubmit={handleProfileSubmit}>
                 <div className="mb-3">
