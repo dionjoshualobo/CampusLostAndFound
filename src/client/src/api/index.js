@@ -295,6 +295,7 @@ export const getUserProfile = async () => {
       department: data.department,
       semester: data.semester,
       contactInfo: data.contactinfo,
+      profile_completed: data.profile_completed,
       createdAt: data.created_at
     };
 
@@ -345,9 +346,26 @@ export const updateUserProfile = async (profileData) => {
 
     console.log('Database update result:', data);
 
+    const updatedProfile = Array.isArray(data) ? data[0] : null;
+    const responseData = updatedProfile ? {
+      name: updatedProfile.name,
+      userType: updatedProfile.usertype,
+      department: updatedProfile.department,
+      semester: updatedProfile.semester,
+      contactInfo: updatedProfile.contactinfo,
+      profile_completed: updatedProfile.profile_completed
+    } : {
+      name: updateData.name,
+      userType: updateData.usertype,
+      department: updateData.department,
+      semester: updateData.semester,
+      contactInfo: updateData.contactinfo,
+      profile_completed: updateData.profile_completed
+    };
+
     return createResponse({ 
       message: 'Profile updated successfully',
-      ...updateData 
+      ...responseData 
     });
   } catch (error) {
     console.error('Error updating profile:', error);
