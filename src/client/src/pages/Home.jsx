@@ -214,20 +214,20 @@ const Home = () => {
         </div>
         
         <div className="row g-3 align-items-end mt-1">
-          <div className="col-md-4">
-            <label className="form-label">Sort by</label>
-            <select
-              className="form-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
-          </div>
-          
-          <div className="col-md-4">
-            <div className="form-check form-switch mt-4">
+          <div className="col-md-8 d-flex flex-wrap align-items-end gap-3">
+            <div style={{ minWidth: '200px' }}>
+              <label className="form-label">Sort by</label>
+              <select
+                className="form-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
+            
+            <div className="form-check form-switch mb-2">
               <input
                 className="form-check-input"
                 type="checkbox"
@@ -235,15 +235,15 @@ const Home = () => {
                 checked={showImagesOnly}
                 onChange={(e) => setShowImagesOnly(e.target.checked)}
               />
-              <label className="form-check-label" htmlFor="imagesOnly">
+              <label className="form-check-label text-nowrap" htmlFor="imagesOnly">
                 Only show items with photos
               </label>
             </div>
           </div>
           
-          <div className="col-md-4 d-flex justify-content-md-end">
+          <div className="col-md-4 d-flex justify-content-md-end mb-2">
             <button
-              className="btn btn-outline-secondary mt-4"
+              className="btn btn-outline-secondary"
               onClick={clearFilters}
               disabled={!hasActiveFilters}
             >

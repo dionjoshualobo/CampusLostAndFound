@@ -126,6 +126,12 @@ body {
   opacity: 0.5;
 }
 
+.form-control:disabled, .form-select:disabled {
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  opacity: 1;
+}
+
 .form-label {
   color: var(--text-primary);
   font-weight: 500;
