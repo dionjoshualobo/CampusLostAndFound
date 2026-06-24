@@ -89,9 +89,9 @@ const NotificationDropdown = () => {
 
   return (
     <>
-      <div className={`dropdown${isOpen ? ' show' : ''}`} ref={dropdownRef}>
+      <div className={`dropdown d-flex${isOpen ? ' show' : ''}`} ref={dropdownRef}>
         <button
-          className="btn btn-outline-secondary position-relative"
+          className="btn btn-outline-secondary position-relative d-flex align-items-center"
           onClick={() => setIsOpen(!isOpen)}
           aria-expanded={isOpen}
         >
