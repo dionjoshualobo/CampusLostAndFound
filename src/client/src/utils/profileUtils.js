@@ -10,14 +10,14 @@ export const isProfileComplete = (user) => {
     return true;
   }
   
-  // If profile_completed is false, null, or undefined, profile is not complete
-  if (user.profile_completed === false || user.profile_completed == null) {
-    console.log('isProfileComplete - returning false (database flag is false/null/undefined)');
-    return false;
+  // Calculate dynamically based on required fields
+  const missing = getMissingFields(user);
+  if (missing.length === 0) {
+    console.log('isProfileComplete - returning true (dynamically calculated based on no missing fields)');
+    return true;
   }
   
-  // This shouldn't happen, but fallback to false for safety
-  console.log('isProfileComplete - returning false (fallback)');
+  console.log('isProfileComplete - returning false (database flag is false/null/undefined and fields are missing)');
   return false;
 };
 
