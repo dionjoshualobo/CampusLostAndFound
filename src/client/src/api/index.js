@@ -84,8 +84,20 @@ export const getCategories = async () => {
   }
 };
 
-export const getItem = async (id) => {
+// Cache for item details to improve navigation speed
+const itemCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export const getItem = async (id, forceRefresh = false) => {
   try {
+    const now = Date.now();
+    if (!forceRefresh && itemCache.has(id)) {
+      const { data, timestamp } = itemCache.get(id);
+      if (now - timestamp < CACHE_TTL) {
+        return createResponse(data);
+      }
+    }
+
     // Get the item
     const { data: item, error: itemError } = await supabase
       .from('items')
@@ -148,6 +160,9 @@ export const getItem = async (id) => {
         filename: img.filename
       }))
     };
+
+    // Store in cache
+    itemCache.set(id, { data: transformedItem, timestamp: now });
 
     return createResponse(transformedItem);
   } catch (error) {
@@ -561,6 +576,7 @@ export const deleteItem = async (itemId) => {
       .eq('userid', user.id);
 
     if (error) throw error;
+    itemCache.delete(itemId);
     return createResponse({ message: 'Item deleted successfully' });
   } catch (error) {
     console.error('Error deleting item:', error);
@@ -681,6 +697,8 @@ export const claimItem = async (itemId, action = 'notify') => {
       })),
       notificationSent: action === 'notify'
     };
+
+    itemCache.set(itemId, { data: transformedItem, timestamp: Date.now() });
 
     return createResponse(transformedItem);
   } catch (error) {
