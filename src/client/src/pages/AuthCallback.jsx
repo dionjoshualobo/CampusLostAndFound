@@ -38,7 +38,8 @@ const AuthCallback = ({ login }) => {
           // Set the session token and user data
           login(data.session.access_token, userData);
           
-          // Redirect will happen automatically due to login state change
+          // Redirect to home page
+          window.location.href = '/';
         } else {
           setError('No authentication session found.');
           setLoading(false);
