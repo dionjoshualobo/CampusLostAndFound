@@ -177,10 +177,13 @@ function App() {
   if (isLoading) {
     return (
       <div className="container mt-5 text-center">
-        <div className="spinner-border" role="status">
+        <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
-        <p className="mt-3">Loading Campus Lost & Found...</p>
+        <h5 className="mt-3">Loading Campus Lost & Found...</h5>
+        <p className="text-muted small mt-2">
+          If it takes too long, please try refreshing or returning <a href="/" className="text-decoration-none">Home</a>.
+        </p>
       </div>
     );
   }

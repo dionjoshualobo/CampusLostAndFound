@@ -66,6 +66,9 @@ const AuthCallback = ({ login }) => {
                 </div>
                 <h4>Completing sign in...</h4>
                 <p className="text-muted">Please wait while we set up your account.</p>
+                <p className="text-muted small mt-2">
+                  If it takes too long, please press <a href="/" className="text-decoration-none">Home</a>.
+                </p>
               </div>
             </div>
           </div>
