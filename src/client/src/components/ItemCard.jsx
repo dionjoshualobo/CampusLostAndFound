@@ -16,8 +16,12 @@ const ItemCard = ({ item }) => {
           />
         ) : (
           <img
-            src="/images/default-item.png"
-            alt="Default placeholder"
+            src={`/images/categories/${item.categoryId || '8'}.png`}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = '/images/default-item.png';
+            }}
+            alt={`${item.categoryName || 'Default'} placeholder`}
             loading="lazy"
             style={{ objectFit: 'cover' }}
           />
