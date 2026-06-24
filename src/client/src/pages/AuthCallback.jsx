@@ -38,7 +38,8 @@ const AuthCallback = ({ login }) => {
           // Set the session token and user data
           login(data.session.access_token, userData);
           
-          // Redirect will happen automatically due to login state change
+          // Redirect to home page
+          window.location.href = '/';
         } else {
           setError('No authentication session found.');
           setLoading(false);
@@ -65,6 +66,9 @@ const AuthCallback = ({ login }) => {
                 </div>
                 <h4>Completing sign in...</h4>
                 <p className="text-muted">Please wait while we set up your account.</p>
+                <p className="text-muted small mt-2">
+                  If it takes too long, please press <a href="/" className="text-decoration-none">Home</a>.
+                </p>
               </div>
             </div>
           </div>

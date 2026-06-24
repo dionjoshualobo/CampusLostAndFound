@@ -64,13 +64,13 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
             
             {isAuthenticated ? (
               <>
-                <Link className="btn btn-primary btn-sm d-none d-lg-inline-flex" to="/items/new">
+                <Link className="btn btn-primary d-none d-lg-inline-flex align-items-center" to="/items/new">
                   <i className="bi bi-plus-circle me-1"></i>
                   Report Item
                 </Link>
-                <div className="dropdown">
+                <div className="dropdown d-flex">
                   <button 
-                    className={`btn btn-outline-primary dropdown-toggle position-relative ${profileIncomplete ? 'btn-outline-warning' : ''}`}
+                    className={`btn btn-outline-primary dropdown-toggle position-relative d-flex align-items-center ${profileIncomplete ? 'btn-outline-warning' : ''}`}
                     type="button" 
                     data-bs-toggle="dropdown"
                     aria-expanded="false"
@@ -104,8 +104,8 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
                 </div>
               </>
             ) : (
-              <div className="d-flex gap-2">
-                <Link className="btn btn-primary btn-sm" to="/auth">
+              <div className="d-flex gap-2 align-items-center">
+                <Link className="btn btn-primary d-flex align-items-center" to="/auth">
                   <i className="bi bi-google me-1"></i>
                   Sign In
                 </Link>
