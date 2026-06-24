@@ -6,7 +6,7 @@ const ItemCard = ({ item }) => {
   const primaryImage = item.images?.[0]?.url;
   
   return (
-    <div className="item-card">
+    <Link to={`/items/${item.id}`} className="item-card text-decoration-none text-reset d-block position-relative">
       <div className="item-card__image">
         {primaryImage ? (
           <img
@@ -15,9 +15,12 @@ const ItemCard = ({ item }) => {
             loading="lazy"
           />
         ) : (
-          <div className="item-card__placeholder">
-            <i className="bi bi-image"></i>
-          </div>
+          <img
+            src="/images/default-item.png"
+            alt="Default placeholder"
+            loading="lazy"
+            style={{ objectFit: 'cover' }}
+          />
         )}
       </div>
       <div className="item-card__body">
@@ -42,15 +45,15 @@ const ItemCard = ({ item }) => {
           <span><i className="bi bi-person me-1"></i>{item.userName || 'Anonymous'}</span>
         </div>
         <div className="item-card__footer">
-          <Link to={`/items/${item.id}`} className="btn btn-outline-primary btn-sm">
+          <span className="btn btn-outline-primary btn-sm">
             View Details
-          </Link>
+          </span>
           <small className="text-muted">
             Reported {formatDate(item.createdAt)}
           </small>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
