@@ -9,7 +9,7 @@ const DarkModeToggle = ({ isDarkMode, toggleDarkMode }) => {
       aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
     >
       <span className="dark-mode-icon">
-        {isDarkMode ? '☀️' : '🌙'}
+        {isDarkMode ? <i className="bi bi-sun-fill"></i> : <i className="bi bi-moon-fill"></i>}
       </span>
       <span className="d-none d-md-inline">
         {isDarkMode ? 'Light' : 'Dark'}
