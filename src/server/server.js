@@ -8,6 +8,7 @@ const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
 const commentRoutes = require('./routes/comments');
 const notificationRoutes = require('./routes/notifications');
+const matchRoutes = require('./routes/matches');
 const supabase = require('./config/db');
 
 const app = express();
@@ -64,6 +65,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/matches', matchRoutes);
 
 // API health check
 app.get('/api', (req, res) => {
