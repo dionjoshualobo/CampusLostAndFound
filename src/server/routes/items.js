@@ -4,6 +4,7 @@ const supabase = require('../config/db');
 const auth = require('../middleware/auth');
 const { validateItemReport } = require('../middleware/validation');
 const { upload, uploadToSupabase, deleteFromSupabase } = require('../middleware/upload');
+const { findMatchesForItem } = require('../services/matching');
 
 // Get all items with category info and images
 router.get('/', async (req, res) => {
@@ -310,7 +311,12 @@ router.post('/', auth, upload.single('image'), validateItemReport, async (req, r
         filename: img.filename
       }))
     };
-    
+
+    // Trigger matching for the new item (async, don't block response)
+    findMatchesForItem(itemId).catch(err => {
+      console.error('Matching service error:', err);
+    });
+
     res.status(201).json(transformedItem);
   } catch (error) {
     console.error('Create item error:', error);
