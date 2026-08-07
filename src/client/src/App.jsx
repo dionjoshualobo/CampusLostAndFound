@@ -7,6 +7,7 @@ import AuthCallback from './pages/AuthCallback';
 import ItemForm from './pages/ItemForm';
 import ItemDetails from './pages/ItemDetails';
 import Profile from './pages/Profile';
+import Matches from './pages/Matches';
 import Test from './pages/Test';
 import { supabase } from './config/supabase';
 import { getUserProfile } from './api';
@@ -223,9 +224,13 @@ function App() {
                 element={isAuthenticated ? <ItemForm /> : <Navigate to="/auth" />} 
               />
               <Route path="/items/:id" element={<ItemDetails />} />
-              <Route 
-                path="/profile" 
-                element={isAuthenticated ? <Profile refreshUserProfile={refreshUserProfile} /> : <Navigate to="/auth" />} 
+              <Route
+                path="/matches"
+                element={isAuthenticated ? <Matches /> : <Navigate to="/auth" />}
+              />
+              <Route
+                path="/profile"
+                element={isAuthenticated ? <Profile refreshUserProfile={refreshUserProfile} /> : <Navigate to="/auth" />}
               />
             </Routes>
           </div>

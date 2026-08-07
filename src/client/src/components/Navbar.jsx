@@ -45,12 +45,20 @@ const Navbar = ({ isAuthenticated, user, logout, isDarkMode, toggleDarkMode }) =
               </Link>
             </li>
             {isAuthenticated && (
-              <li className="nav-item">
-                <Link className="nav-link" to="/items/new">
-                  <i className="bi bi-plus-circle me-1"></i>
-                  Report Item
-                </Link>
-              </li>
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/items/new">
+                    <i className="bi bi-plus-circle me-1"></i>
+                    Report Item
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/matches">
+                    <i className="bi bi-arrow-left-right me-1"></i>
+                    Matches
+                  </Link>
+                </li>
+              </>
             )}
           </ul>
           
