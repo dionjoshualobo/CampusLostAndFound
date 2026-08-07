@@ -846,3 +846,136 @@ export const deleteNotification = async (notificationId) => {
     return createResponse(null, error);
   }
 };
+
+// Match APIs
+export const getMatches = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Get user's items
+    const { data: userItems, error: itemsError } = await supabase
+      .from('items')
+      .select('id')
+      .eq('userid', user.id);
+
+    if (itemsError) throw itemsError;
+    if (!userItems || userItems.length === 0) return createResponse([]);
+
+    const itemIds = userItems.map(item => item.id);
+
+    // Get matches involving user's items
+    const { data: matches, error: matchesError } = await supabase
+      .from('item_matches')
+      .select(`
+        id,
+        match_score,
+        match_details,
+        status,
+        createdat,
+        lost_item_id,
+        found_item_id,
+        lost_item:items!lost_item_id (
+          id,
+          title,
+          description,
+          status,
+          location,
+          datelost,
+          userid,
+          profiles:userid (name),
+          categories:categoryid (name),
+          item_images (url)
+        ),
+        found_item:items!found_item_id (
+          id,
+          title,
+          description,
+          status,
+          location,
+          datelost,
+          userid,
+          profiles:userid (name),
+          categories:categoryid (name),
+          item_images (url)
+        )
+      `)
+      .or(`lost_item_id.in.(${itemIds.join(',')}),found_item_id.in.(${itemIds.join(',')})`)
+      .neq('status', 'dismissed')
+      .order('createdat', { ascending: false });
+
+    if (matchesError) throw matchesError;
+
+    return createResponse(matches || []);
+  } catch (error) {
+    console.error('Error fetching matches:', error);
+    return createResponse(null, error);
+  }
+};
+
+export const dismissMatch = async (matchId) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('item_matches')
+      .update({ status: 'dismissed' })
+      .eq('id', matchId);
+
+    if (error) throw error;
+    return createResponse({ message: 'Match dismissed' });
+  } catch (error) {
+    console.error('Error dismissing match:', error);
+    return createResponse(null, error);
+  }
+};
+
+export const contactMatch = async (matchId) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Get the match and determine the other user
+    const { data: match, error: matchError } = await supabase
+      .from('item_matches')
+      .select(`
+        id,
+        lost_item_id,
+        found_item_id,
+        lost_item:items!lost_item_id (userid),
+        found_item:items!found_item_id (userid)
+      `)
+      .eq('id', matchId)
+      .single();
+
+    if (matchError) throw matchError;
+
+    const otherUserId = match.lost_item.userid === user.id
+      ? match.found_item.userid
+      : match.lost_item.userid;
+
+    // Get contact info
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('name, email, phone')
+      .eq('id', otherUserId)
+      .single();
+
+    if (profileError) throw profileError;
+
+    // Update match status
+    await supabase
+      .from('item_matches')
+      .update({ status: 'contacted' })
+      .eq('id', matchId);
+
+    return createResponse({
+      message: 'Contact info retrieved',
+      contact: profile
+    });
+  } catch (error) {
+    console.error('Error contacting match:', error);
+    return createResponse(null, error);
+  }
+};
