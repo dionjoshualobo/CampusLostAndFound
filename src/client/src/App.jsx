@@ -29,7 +29,7 @@ function App() {
   // Helper function to load complete user profile data
   const loadUserProfile = async (authUser) => {
     try {
-      const profileResponse = await getUserProfile();
+      const profileResponse = await getUserProfile(authUser);
       const profile = profileResponse.data.user;
       
       return {

@@ -271,10 +271,15 @@ export const deleteComment = async (commentId) => {
   }
 };
 
-// User Profile APIs  
-export const getUserProfile = async () => {
+// User Profile APIs
+// Accept optional authUser param to avoid redundant getUser() network call
+export const getUserProfile = async (authUser) => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = authUser;
+    if (!user) {
+      const { data: { user: fetchedUser } } = await supabase.auth.getUser();
+      user = fetchedUser;
+    }
     if (!user) throw new Error('Not authenticated');
 
     const { data, error } = await supabase
