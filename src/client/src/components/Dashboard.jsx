@@ -48,8 +48,7 @@ const Dashboard = () => {
   const counters = {
     lost: 0,
     found: 0,
-    resolved: 0,
-    claimed: 0
+    resolved: 0
   };
   
   stats.statusCounts.forEach(item => {

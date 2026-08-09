@@ -8,7 +8,6 @@ import ItemForm from './pages/ItemForm';
 import ItemDetails from './pages/ItemDetails';
 import Profile from './pages/Profile';
 import Matches from './pages/Matches';
-import Test from './pages/Test';
 import { supabase } from './config/supabase';
 import { getUserProfile } from './api';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -110,7 +109,6 @@ function App() {
       }
     );
 
-    // Remove the redundant checking of dark mode here, since it's now initialized in useState.
     return () => subscription.unsubscribe();
   }, []);
   

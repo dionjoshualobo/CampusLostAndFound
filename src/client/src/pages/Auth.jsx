@@ -1,22 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState } from 'react';
 import { supabase } from '../config/supabase';
 
-const Auth = ({ user }) => {
+const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // If user is already logged in, redirect to home
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
 
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
       setError('');
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
+
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`
@@ -76,14 +70,14 @@ const Auth = ({ user }) => {
               <p className="text-muted mb-4">
                 Use your campus Google account to report items, track responses, and manage your profile.
               </p>
-              
+
               {error && (
                 <div className="alert alert-danger" role="alert">
                   {error}
                 </div>
               )}
-              
-              <button 
+
+              <button
                 className="btn btn-danger btn-lg w-100 d-flex align-items-center justify-content-center"
                 onClick={handleGoogleLogin}
                 disabled={loading}
@@ -105,7 +99,7 @@ const Auth = ({ user }) => {
                   </>
                 )}
               </button>
-              
+
               <div className="mt-4">
                 <small className="text-muted">
                   By signing in, you agree to our terms of service and privacy policy.

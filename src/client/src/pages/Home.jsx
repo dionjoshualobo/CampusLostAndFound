@@ -18,23 +18,16 @@ const Home = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Starting to fetch data...');
-
-        // Fetch items and categories in parallel
         const [itemsResponse, categoriesResponse] = await Promise.all([
           getItems(),
           getCategories()
         ]);
-
-        console.log('Items response:', itemsResponse);
-        console.log('Categories response:', categoriesResponse);
 
         setItems(itemsResponse.data);
         setCategories(categoriesResponse.data);
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
-        console.error('Error details:', err.response, err.message);
         setError(`Failed to load data: ${err.message || 'Please try again later.'}`);
         setIsLoading(false);
       }
